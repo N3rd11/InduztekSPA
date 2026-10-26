@@ -1,4 +1,10 @@
-# InduztekSPA · Evaluación Parcial 2
+# ⚡ InduztekSPA
+
+InduztekSPA es una aplicación móvil desarrollada en Android Studio para mejorar el registro de pruebas eléctricas que realiza Induztek Ingeniería SpA en terreno.
+
+El proyecto busca reemplazar los registros en papel por un sistema digital donde los técnicos puedan ingresar mediciones, consultar equipos y mantener un historial de los trabajos realizados.
+
+El objetivo es facilitar el trabajo de técnicos e ingenieros, organizando la información de cada prueba y permitiendo consultar los protocolos de los equipos.
 
 Aplicación Android académica para Induztek Ingeniería SpA: registro de pruebas eléctricas en terreno, acta inmediata y revisión posterior de protocolos. Todos los datos son ficticios. El acceso por roles es simulado y **no constituye un sistema de seguridad real**.
 
