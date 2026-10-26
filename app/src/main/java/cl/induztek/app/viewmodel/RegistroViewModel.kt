@@ -10,11 +10,13 @@ import androidx.compose.runtime.setValue
 
 import cl.induztek.app.model.ReglasAislacion
 import cl.induztek.app.model.EvaluacionAislacion
+import cl.induztek.app.model.ValidacionesFormulario
 
 import cl.induztek.app.data.InduztekDatabase
 import cl.induztek.app.data.RegistroAislacionEntity
 
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 class RegistroViewModel(
     application: Application
@@ -44,16 +46,26 @@ class RegistroViewModel(
     )
         private set
 
+    var guardando by mutableStateOf(false)
+        private set
+
+    var errores by mutableStateOf(emptyMap<String, String>())
+        private set
+
     init {
         viewModelScope.launch {
-            dao.obtenerTodos().collect { registros ->
-                historial = registros
+            try {
+                dao.obtenerTodos().collect { registros -> historial = registros }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                error = "No se pudo consultar el historial: ${e.message}"
             }
         }
     }
 
     fun cambiarLectura1(valor: String) {
         lectura1 = valor
+        errores = errores - "lectura1"
         evaluacion = null
         error = null
         mensaje = null
@@ -61,12 +73,15 @@ class RegistroViewModel(
 
     fun cambiarLectura10(valor: String) {
         lectura10 = valor
+        errores = errores - "lectura10"
         evaluacion = null
         error = null
         mensaje = null
     }
 
     fun calcular() {
+        errores = ValidacionesFormulario.validar(mapOf("lectura1" to lectura1, "lectura10" to lectura10), setOf("lectura1", "lectura10"))
+        if (errores.isNotEmpty()) { error = "Revisa los campos indicados"; evaluacion = null; return }
         val uno = lectura1.replace(",", ".").toDoubleOrNull()
         val diez = lectura10.replace(",", ".").toDoubleOrNull()
 
@@ -87,6 +102,8 @@ class RegistroViewModel(
 
     fun guardar() {
 
+        if (guardando) return
+
         if (evaluacion == null) {
             calcular()
         }
@@ -99,6 +116,7 @@ class RegistroViewModel(
         val diez = lectura10.replace(",", ".").toDoubleOrNull()
             ?: return
 
+        guardando = true
         viewModelScope.launch {
             try {
                 dao.insertar(
@@ -116,8 +134,11 @@ class RegistroViewModel(
                 error = null
 
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 error = "No se pudo guardar: ${e.message}"
                 mensaje = null
+            } finally {
+                guardando = false
             }
         }
     }

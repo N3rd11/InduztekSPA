@@ -6,13 +6,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [RegistroAislacionEntity::class],
-    version = 1,
-    exportSchema = false
+    entities = [RegistroAislacionEntity::class, ClienteEntity::class, InstalacionEntity::class,
+        EquipoEntity::class, InstrumentoEntity::class, CalibracionEntity::class, VisitaEntity::class,
+        ParticipanteEntity::class, ProtocoloEntity::class, PruebaEntity::class, MedicionEntity::class,
+        HistorialEstadoEntity::class, PendienteSyncEntity::class, BorradorFormularioEntity::class],
+    version = 2,
+    exportSchema = true
 )
 abstract class InduztekDatabase : RoomDatabase() {
 
     abstract fun registroDao(): RegistroAislacionDao
+    abstract fun mvpDao(): MvpDao
 
     companion object {
 
@@ -26,7 +30,7 @@ abstract class InduztekDatabase : RoomDatabase() {
                     context.applicationContext,
                     InduztekDatabase::class.java,
                     "induztek_local.db"
-                ).build().also {
+                ).addMigrations(MigracionMvp).build().also {
                     INSTANCE = it
                 }
             }

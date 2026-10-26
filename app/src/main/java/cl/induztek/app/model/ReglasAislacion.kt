@@ -28,6 +28,7 @@ object ReglasAislacion {
         }
 
         val ip = lectura10 / lectura1
+        require(ip.isFinite()) { "El índice calculado está fuera de rango" }
 
         val resultado = when {
             lectura1 < 100 || ip < 1.0 ->

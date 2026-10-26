@@ -1,0 +1,42 @@
+{
+  "clientes": [
+    {"id":"cliente-pacifico","nombre":"Envasadora del Pacífico S.A.","rut":"76.482.915-8","giro":"Agroindustria","contacto":"Marcela Fuentes Rojas","telefono":"+56 9 0000 0101","correo":"mfuentes@envpacifico.ejemplo"},
+    {"id":"cliente-sanitaria","nombre":"Sanitaria Valle Central S.A.","rut":"96.731.540-0","giro":"Servicios sanitarios","contacto":"Jorge Arancibia Leiva","telefono":"","correo":""},
+    {"id":"cliente-minera","nombre":"Minera Cerro Alto SpA","rut":"77.105.362-9","giro":"Minería","contacto":"Patricio Navarro Soto","telefono":"","correo":""},
+    {"id":"cliente-clinica","nombre":"Clínica Los Aromos Ltda.","rut":"76.903.218-5","giro":"Salud","contacto":"Carolina Méndez Pizarro","telefono":"","correo":""},
+    {"id":"cliente-cementos","nombre":"Cementos Lomas Blancas S.A.","rut":"99.524.170-6","giro":"Construcción","contacto":"Luis Bravo Castillo","telefono":"","correo":""},
+    {"id":"cliente-datacenter","nombre":"Data Center Andes Norte SpA","rut":"78.214.635-1","giro":"Tecnología","contacto":"Felipe Órdenes Vera","telefono":"","correo":""}
+  ],
+  "instalaciones": [
+    {"id":"lampa","clienteId":"cliente-pacifico","nombre":"Planta Lampa","ubicacion":"Sector industrial","comuna":"Lampa","region":"Metropolitana","observaciones":"Inducción obligatoria de 30 min"},
+    {"id":"sur","clienteId":"cliente-sanitaria","nombre":"Planta Elevadora Sur","ubicacion":"Sector rural poniente","comuna":"San Bernardo","region":"Metropolitana","observaciones":"Sala eléctrica sin señal"},
+    {"id":"tiltil","clienteId":"cliente-minera","nombre":"Faena Til Til","ubicacion":"Ruta 5 Norte","comuna":"Til Til","region":"Metropolitana","observaciones":"Sin señal en toda la faena"},
+    {"id":"clinica","clienteId":"cliente-clinica","nombre":"Edificio Clínico","ubicacion":"Zona urbana","comuna":"La Florida","region":"Metropolitana","observaciones":""},
+    {"id":"molienda","clienteId":"cliente-cementos","nombre":"Planta Molienda","ubicacion":"Sector precordillera","comuna":"Puente Alto","region":"Metropolitana","observaciones":""},
+    {"id":"site","clienteId":"cliente-datacenter","nombre":"Site Huechuraba","ubicacion":"Parque empresarial","comuna":"Huechuraba","region":"Metropolitana","observaciones":""}
+  ],
+  "equipos": [
+    {"id":"tr01","instalacionId":"lampa","tag":"TR-01","tipo":"TRANSFORMADOR","marca":"Rhona","modelo":"","serie":"RH-18733","anio":"2012","placa":"1.500 kVA; 12 / 0,4 kV","observaciones":""},
+    {"id":"tr02","instalacionId":"lampa","tag":"TR-02","tipo":"TRANSFORMADOR","marca":"Rhona","modelo":"","serie":"RH-21904","anio":"2017","placa":"1.000 kVA; 12 / 0,4 kV","observaciones":""},
+    {"id":"tra","instalacionId":"sur","tag":"TR-A","tipo":"TRANSFORMADOR","marca":"Tusan","modelo":"","serie":"TS-5521","anio":"2009","placa":"2.500 kVA; 23 / 0,4 kV","observaciones":""},
+    {"id":"cel03","instalacionId":"clinica","tag":"CEL-MT-03","tipo":"CELDA_MT","marca":"Ormazabal","modelo":"","serie":"OR-77812","anio":"2018","placa":"12 kV; 630 A","maxContactos":60,"observaciones":""},
+    {"id":"int52","instalacionId":"tiltil","tag":"INT-52-1","tipo":"INTERRUPTOR","marca":"Schneider","modelo":"","serie":"SE-449021","anio":"2015","placa":"23 kV; 1.250 A","maxContactos":45,"observaciones":""},
+    {"id":"rel50","instalacionId":"molienda","tag":"REL-50/51-A","tipo":"RELE","marca":"SEL","modelo":"751","serie":"SEL-751-30219","anio":"2020","placa":"Sobrecorriente; ajuste 5 A","observaciones":""},
+    {"id":"cab02","instalacionId":"site","tag":"CAB-MT-02","tipo":"CABLE","marca":"Nexans","modelo":"","serie":"NX-2201-B","anio":"2019","placa":"15 kV; 3×240 mm²; 180 m","observaciones":""},
+    {"id":"trss","instalacionId":"tiltil","tag":"TR-SS-01","tipo":"TRANSFORMADOR","marca":"ABB","modelo":"","serie":"ABB-1180442","anio":"2011","placa":"5.000 kVA; 23 / 6,6 kV","observaciones":""}
+  ],
+  "instrumentos": [
+    {"id":"meg5","nombre":"Megóhmetro 5 kV","marca":"Megger","modelo":"MIT525","serie":"MIT-0045821"},
+    {"id":"meg10","nombre":"Megóhmetro 10 kV","marca":"Megger","modelo":"MIT1025","serie":"MIT-0071233"},
+    {"id":"ttr","nombre":"Medidor TTR","marca":"Megger","modelo":"TTR300","serie":"TTR-30044"},
+    {"id":"micro","nombre":"Micro-ohmímetro","marca":"Megger","modelo":"DLRO10X","serie":"DLR-10882"},
+    {"id":"inyeccion","nombre":"Inyección secundaria","marca":"Omicron","modelo":"CMC 356","serie":"CMC-HB411"}
+  ],
+  "calibraciones": [
+    {"id":"cal-meg5","instrumentoId":"meg5","fecha":"2026-03-15","vencimiento":"2027-03-15"},
+    {"id":"cal-meg10","instrumentoId":"meg10","fecha":"2025-10-10","vencimiento":"2026-10-10"},
+    {"id":"cal-ttr","instrumentoId":"ttr","fecha":"2026-06-02","vencimiento":"2027-06-02"},
+    {"id":"cal-micro","instrumentoId":"micro","fecha":"2025-08-20","vencimiento":"2026-08-20"},
+    {"id":"cal-inyeccion","instrumentoId":"inyeccion","fecha":"2026-01-05","vencimiento":"2027-01-05"}
+  ]
+}

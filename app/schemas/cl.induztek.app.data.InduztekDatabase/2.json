@@ -1,0 +1,860 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "6e70f79408cf73b45d3eb1a70c211b13",
+    "entities": [
+      {
+        "tableName": "registros_aislacion",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `equipoTag` TEXT NOT NULL, `instalacion` TEXT NOT NULL, `lectura1` REAL NOT NULL, `lectura10` REAL NOT NULL, `indice` REAL NOT NULL, `resultado` TEXT NOT NULL, `fechaHora` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "equipoTag",
+            "columnName": "equipoTag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "instalacion",
+            "columnName": "instalacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lectura1",
+            "columnName": "lectura1",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lectura10",
+            "columnName": "lectura10",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "indice",
+            "columnName": "indice",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resultado",
+            "columnName": "resultado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaHora",
+            "columnName": "fechaHora",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "clientes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `rut` TEXT NOT NULL, `giro` TEXT NOT NULL, `contacto` TEXT NOT NULL, `telefono` TEXT NOT NULL, `correo` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rut",
+            "columnName": "rut",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "giro",
+            "columnName": "giro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contacto",
+            "columnName": "contacto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "telefono",
+            "columnName": "telefono",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "correo",
+            "columnName": "correo",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_clientes_rut",
+            "unique": true,
+            "columnNames": [
+              "rut"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_clientes_rut` ON `${TABLE_NAME}` (`rut`)"
+          }
+        ]
+      },
+      {
+        "tableName": "instalaciones",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `clienteId` TEXT NOT NULL, `nombre` TEXT NOT NULL, `ubicacion` TEXT NOT NULL, `comuna` TEXT NOT NULL, `region` TEXT NOT NULL, `observaciones` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clienteId",
+            "columnName": "clienteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ubicacion",
+            "columnName": "ubicacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comuna",
+            "columnName": "comuna",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "region",
+            "columnName": "region",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observaciones",
+            "columnName": "observaciones",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "equipos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `instalacionId` TEXT NOT NULL, `tag` TEXT NOT NULL, `tipo` TEXT NOT NULL, `marca` TEXT NOT NULL, `modelo` TEXT NOT NULL, `serie` TEXT NOT NULL, `anio` TEXT NOT NULL, `placa` TEXT NOT NULL, `maxContactos` REAL, `observaciones` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "instalacionId",
+            "columnName": "instalacionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tag",
+            "columnName": "tag",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "marca",
+            "columnName": "marca",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelo",
+            "columnName": "modelo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serie",
+            "columnName": "serie",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anio",
+            "columnName": "anio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placa",
+            "columnName": "placa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxContactos",
+            "columnName": "maxContactos",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "observaciones",
+            "columnName": "observaciones",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_equipos_instalacionId_tag",
+            "unique": true,
+            "columnNames": [
+              "instalacionId",
+              "tag"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_equipos_instalacionId_tag` ON `${TABLE_NAME}` (`instalacionId`, `tag`)"
+          }
+        ]
+      },
+      {
+        "tableName": "instrumentos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `marca` TEXT NOT NULL, `modelo` TEXT NOT NULL, `serie` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "marca",
+            "columnName": "marca",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelo",
+            "columnName": "modelo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serie",
+            "columnName": "serie",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_instrumentos_serie",
+            "unique": true,
+            "columnNames": [
+              "serie"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_instrumentos_serie` ON `${TABLE_NAME}` (`serie`)"
+          }
+        ]
+      },
+      {
+        "tableName": "calibraciones",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `instrumentoId` TEXT NOT NULL, `fecha` TEXT NOT NULL, `vencimiento` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "instrumentoId",
+            "columnName": "instrumentoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vencimiento",
+            "columnName": "vencimiento",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "visitas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `instalacionId` TEXT NOT NULL, `ot` TEXT NOT NULL, `fecha` TEXT NOT NULL, `ingenieroId` TEXT NOT NULL, `tipo` TEXT NOT NULL, `creadorId` TEXT NOT NULL, `cierre` INTEGER, `receptor` TEXT NOT NULL, `receptorRut` TEXT NOT NULL, `receptorCargo` TEXT NOT NULL, `recepcion` INTEGER, `acta` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "instalacionId",
+            "columnName": "instalacionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ot",
+            "columnName": "ot",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ingenieroId",
+            "columnName": "ingenieroId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "creadorId",
+            "columnName": "creadorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cierre",
+            "columnName": "cierre",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "receptor",
+            "columnName": "receptor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "receptorRut",
+            "columnName": "receptorRut",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "receptorCargo",
+            "columnName": "receptorCargo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recepcion",
+            "columnName": "recepcion",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "acta",
+            "columnName": "acta",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_visitas_ot",
+            "unique": true,
+            "columnNames": [
+              "ot"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_visitas_ot` ON `${TABLE_NAME}` (`ot`)"
+          }
+        ]
+      },
+      {
+        "tableName": "participantes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`visitaId` TEXT NOT NULL, `usuarioId` TEXT NOT NULL, PRIMARY KEY(`visitaId`, `usuarioId`))",
+        "fields": [
+          {
+            "fieldPath": "visitaId",
+            "columnName": "visitaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioId",
+            "columnName": "usuarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "visitaId",
+            "usuarioId"
+          ]
+        }
+      },
+      {
+        "tableName": "protocolos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `numero` TEXT NOT NULL, `visitaId` TEXT NOT NULL, `equipoId` TEXT NOT NULL, `autorId` TEXT NOT NULL, `fecha` INTEGER NOT NULL, `temperatura` REAL, `humedad` REAL, `estado` TEXT NOT NULL, `mantenimiento` TEXT NOT NULL, `comentario` TEXT NOT NULL, `reemplazaId` TEXT, `revision` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numero",
+            "columnName": "numero",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "visitaId",
+            "columnName": "visitaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "equipoId",
+            "columnName": "equipoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "autorId",
+            "columnName": "autorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "temperatura",
+            "columnName": "temperatura",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "humedad",
+            "columnName": "humedad",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mantenimiento",
+            "columnName": "mantenimiento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comentario",
+            "columnName": "comentario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reemplazaId",
+            "columnName": "reemplazaId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_protocolos_numero",
+            "unique": true,
+            "columnNames": [
+              "numero"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_protocolos_numero` ON `${TABLE_NAME}` (`numero`)"
+          },
+          {
+            "name": "index_protocolos_visitaId_equipoId",
+            "unique": true,
+            "columnNames": [
+              "visitaId",
+              "equipoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_protocolos_visitaId_equipoId` ON `${TABLE_NAME}` (`visitaId`, `equipoId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "pruebas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `protocoloId` TEXT NOT NULL, `tipo` TEXT NOT NULL, `elemento` TEXT NOT NULL, `momento` TEXT NOT NULL, `realizada` INTEGER NOT NULL, `motivo` TEXT NOT NULL, `instrumentoId` TEXT, `resultado` TEXT, `detalle` TEXT NOT NULL, `comentario` TEXT NOT NULL, `opera` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "protocoloId",
+            "columnName": "protocoloId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elemento",
+            "columnName": "elemento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "momento",
+            "columnName": "momento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "realizada",
+            "columnName": "realizada",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivo",
+            "columnName": "motivo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "instrumentoId",
+            "columnName": "instrumentoId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "resultado",
+            "columnName": "resultado",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "detalle",
+            "columnName": "detalle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comentario",
+            "columnName": "comentario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "opera",
+            "columnName": "opera",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_pruebas_protocoloId_tipo_elemento_momento",
+            "unique": true,
+            "columnNames": [
+              "protocoloId",
+              "tipo",
+              "elemento",
+              "momento"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_pruebas_protocoloId_tipo_elemento_momento` ON `${TABLE_NAME}` (`protocoloId`, `tipo`, `elemento`, `momento`)"
+          }
+        ]
+      },
+      {
+        "tableName": "mediciones",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`pruebaId` TEXT NOT NULL, `codigo` TEXT NOT NULL, `valor` REAL NOT NULL, `unidad` TEXT NOT NULL, PRIMARY KEY(`pruebaId`, `codigo`))",
+        "fields": [
+          {
+            "fieldPath": "pruebaId",
+            "columnName": "pruebaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codigo",
+            "columnName": "codigo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valor",
+            "columnName": "valor",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unidad",
+            "columnName": "unidad",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "pruebaId",
+            "codigo"
+          ]
+        }
+      },
+      {
+        "tableName": "historial_estados",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `protocoloId` TEXT NOT NULL, `anterior` TEXT, `nuevo` TEXT NOT NULL, `usuarioId` TEXT NOT NULL, `fecha` INTEGER NOT NULL, `motivo` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "protocoloId",
+            "columnName": "protocoloId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anterior",
+            "columnName": "anterior",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nuevo",
+            "columnName": "nuevo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioId",
+            "columnName": "usuarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivo",
+            "columnName": "motivo",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "pendientes_sync",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `usuarioId` TEXT NOT NULL, `tipo` TEXT NOT NULL, `entidadId` TEXT NOT NULL, `payload` TEXT NOT NULL, `fecha` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usuarioId",
+            "columnName": "usuarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entidadId",
+            "columnName": "entidadId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha",
+            "columnName": "fecha",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "borradores_formulario",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `contenido` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contenido",
+            "columnName": "contenido",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6e70f79408cf73b45d3eb1a70c211b13')"
+    ]
+  }
+}

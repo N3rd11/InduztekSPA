@@ -4,28 +4,37 @@ package cl.induztek.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.animateContentSize
+import cl.induztek.app.ui.components.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import cl.induztek.app.viewmodel.RegistroViewModel
+import cl.induztek.app.ui.InduztekApp
+import cl.induztek.app.ui.theme.InduztekSPATheme
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
 
         setContent {
-            MaterialTheme {
-                RegistroScreen()
+            InduztekSPATheme {
+                InduztekApp()
             }
         }
     }
@@ -83,32 +92,8 @@ fun RegistroScreen(
             style = MaterialTheme.typography.titleMedium
         )
 
-        OutlinedTextField(
-            value = vm.lectura1,
-            onValueChange = vm::cambiarLectura1,
-            label = {
-                Text("Lectura 1 minuto (MΩ)")
-            },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal
-            ),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = vm.lectura10,
-            onValueChange = vm::cambiarLectura10,
-            label = {
-                Text("Lectura 10 minutos (MΩ)")
-            },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal
-            ),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
+        CampoInduztek(vm.lectura1, vm::cambiarLectura1, "Lectura 1 minuto (MΩ)", vm.errores["lectura1"], Simbolo.ENERGIA, KeyboardType.Decimal)
+        CampoInduztek(vm.lectura10, vm::cambiarLectura10, "Lectura 10 minutos (MΩ)", vm.errores["lectura10"], Simbolo.ENERGIA, KeyboardType.Decimal)
         // BOTON PARA CALCULAR
         Button(
             onClick = {
@@ -132,7 +117,7 @@ fun RegistroScreen(
         vm.evaluacion?.let { resultado ->
 
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().animateContentSize()
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -160,6 +145,7 @@ fun RegistroScreen(
 
         // BOTON PARA GUARDAR EN ROOM
         Button(
+            enabled = !vm.guardando,
             onClick = {
                 vm.guardar()
             },
