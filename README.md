@@ -1,229 +1,104 @@
-# ⚡ InduztekSPA
+# InduztekSPA
 
-InduztekSPA es una aplicación móvil desarrollada en Android Studio para mejorar el registro de pruebas eléctricas que realiza Induztek Ingeniería SpA en terreno.
+**Del registro de pruebas eléctricas en terreno al acta que recibe el cliente.**
 
-El proyecto busca reemplazar los registros en papel por un sistema digital donde los técnicos puedan ingresar mediciones, consultar equipos y mantener un historial de los trabajos realizados.
+InduztekSPA es una aplicación Android para empresas de servicios eléctricos que necesitan registrar mediciones, revisar protocolos y entregar un respaldo de cada trabajo. Cada registro queda asociado a una orden de trabajo, una instalación y los equipos intervenidos. Así, el equipo puede reconstruir **qué se hizo, qué resultado tuvo y en qué etapa está**, incluso después de terminada la visita.
 
-El objetivo es facilitar el trabajo de técnicos e ingenieros, organizando la información de cada prueba y permitiendo consultar los protocolos de los equipos.
+La aplicación conecta tres momentos del mismo trabajo. El técnico registra lo realizado en terreno, ingeniería revisa y formaliza los resultados, y el cliente consulta los trabajos publicados de su empresa desde su propio portal.
 
-Aplicación Android académica para Induztek Ingeniería SpA. Registra pruebas eléctricas en terreno, emite un acta y permite revisar los protocolos. Usa datos ficticios y valida los permisos de las cuentas conectadas en el servidor.
+[Ver la aplicación](Docs/evidencias/apk-acta-remota.png) · [Descargar el APK firmado](Docs/entrega/InduztekSPA-Parcial4.apk) · [Seguir una demostración](Docs/ENTREGA_PARCIAL4.md#demostración)
 
-La aplicación usa Kotlin, Jetpack Compose y Material 3, con arquitectura MVVM y almacenamiento local Room sobre SQLite.
+## Qué resuelve
 
-## Entrega Parcial 4 · DSY1105
+En un servicio en terreno, una misma visita puede dejar mediciones, protocolos por equipo y un acta de recepción. Cuando esos datos quedan repartidos en hojas y archivos, es difícil reconstruir el trabajo o distinguir un resultado registrado de uno ya formalizado.
 
-| Entregable | Archivo |
+InduztekSPA reúne ese recorrido bajo la misma orden de trabajo. En terreno se capturan los datos por equipo. En revisión, el historial muestra los cambios de estado del protocolo. En el portal cliente, la empresa puede consultar el avance y abrir el acta publicada cuando esté disponible.
+
+<table>
+  <tr>
+    <td><img src="Docs/evidencias/apk-acta-remota.png" alt="Consulta de una copia sincronizada del acta" width="250"></td>
+    <td><img src="Docs/evidencias/apk-clima.png" alt="Consulta del clima de referencia dentro de una visita" width="250"></td>
+  </tr>
+  <tr>
+    <td>Consulta del acta sincronizada</td>
+    <td>Clima de referencia en una visita</td>
+  </tr>
+</table>
+
+## Cómo se usa en terreno
+
+1. **Abrir una visita.** El técnico registra la orden de trabajo, selecciona la instalación y asigna el equipo de trabajo. Desde esa visita abre un protocolo por equipo intervenido.
+2. **Registrar las pruebas.** La aplicación guía el ingreso de mediciones según el tipo de equipo y prueba. Para las pruebas con cálculo disponible, permite revisar el resultado antes de guardar.
+3. **Conservar el avance.** Después de iniciar sesión, el técnico puede seguir guardando borradores y cambios durante un corte de conexión. La aplicación los mantiene en el dispositivo y los envía cuando vuelve a estar disponible el servidor.
+4. **Cerrar la visita y revisar los resultados.** El equipo registra la recepción del trabajo y genera el acta de terreno. Ingeniería revisa los protocolos y formaliza los resultados con su perfil.
+5. **Consultar el respaldo.** El cliente busca la orden de trabajo o la instalación, revisa lo publicado y puede consultar o guardar el acta en PDF.
+
+### Equipos y pruebas
+
+La aplicación contempla **transformadores, interruptores, celdas de media tensión, cables de poder y relés de protección**. Según el equipo, el protocolo admite pruebas de resistencia de aislación, relación de transformación, resistencia de devanados, resistencia de contactos y operación de relé.
+
+En trabajos de mantenimiento se pueden registrar mediciones previas y posteriores. Si una prueba aplicable queda sin realizarse, el técnico puede registrar el motivo. Las evaluaciones que requieren criterio técnico quedan disponibles para revisión manual.
+
+## Una vista para cada responsabilidad
+
+| Rol | Qué puede hacer |
 | --- | --- |
-| Aplicación Android | [APK firmado](Docs/entrega/InduztekSPA-Parcial4.apk) · [Captura en el emulador](Docs/evidencias/apk-acta-remota.png) |
-| Firma digital | [Verificación del certificado](Docs/evidencias/firma-apk.txt) |
-| Pauta y demostración | [Guía de entrega Parcial 4](Docs/ENTREGA_PARCIAL4.md) |
-| Pruebas | [Evidencia del emulador](Docs/evidencias/pruebas-emulador.txt) · [Cobertura JaCoCo](Docs/evidencias/cobertura-logica.txt) |
+| **Técnico de terreno** | Crear visitas, registrar pruebas y mediciones, y generar el acta al cerrar una visita. |
+| **Ingeniero de pruebas** | Revisar resultados e historial, registrar observaciones y formalizar protocolos. |
+| **Jefe técnico** | Supervisar el trabajo, administrar instrumentos y calibraciones, y gestionar cuentas, roles y permisos. |
+| **Cliente** | Buscar trabajos, revisar las pruebas publicadas y consultar los equipos y actas de su empresa. |
 
-La app usa cuatro microservicios Spring Boot. Para abrir una sesión, Android verifica la cuenta con Usuarios y confirma la misma identidad en Catálogos, Protocolos y Actas. Tras iniciar sesión, Room conserva los borradores y la cola de cambios si se pierde la conexión. En una visita abierta se puede consultar el clima referencial de su comuna mediante Open-Meteo.
+El registro de un cliente comienza como una solicitud pendiente. Un jefe técnico la revisa, asigna la empresa y activa el acceso. El portal muestra la fecha de la última consulta al servidor y distingue una **visita en curso**, un trabajo **en revisión técnica** y los **protocolos formalizados**. El acta de terreno y el estado de formalización se presentan por separado.
 
-### Funcionalidades
+### Funciones del teléfono
 
-- Registrar visitas, protocolos y mediciones en terreno con Room y sincronizarlos con el backend.
-- Revisar y formalizar protocolos según el rol. El portal Cliente muestra los trabajos de su empresa, las pruebas realizadas, el estado de formalización y las actas publicadas.
-- Solicitar una cuenta cliente y gestionar su aprobación, empresa asignada y permisos desde Jefe técnico.
-- Consultar el clima de la comuna o de la ubicación aproximada del teléfono mediante Open-Meteo y Retrofit.
-- Usar cámara, selector de fotos, ubicación aproximada y notificaciones de sincronización en Android. Las fotos de perfil se sincronizan por cuenta.
+En una visita abierta, el técnico puede consultar **temperatura y humedad** para la comuna de la instalación o la ubicación aproximada de su dispositivo. La app pide permiso al usar la ubicación y muestra el clima como referencia para planificar el trabajo. También permite tomar o elegir una foto de perfil y activar avisos de Android al completar una sincronización.
 
-| Componente | Endpoints |
-| --- | --- |
-| Catálogos, puerto 8081 | `GET /api/servicios/catalogos`, `GET /api/session`, `GET /api/snapshot`, `GET /api/clientes/{id}`, `POST /api/events` |
-| Protocolos, puerto 8082 | `GET /api/servicios/protocolos`, `GET /api/snapshot`, `POST /api/events`, `GET /api/actas/{visitaId}` |
-| Usuarios, puerto 8083 (módulo `access-service`) | `GET /api/session`, `POST /api/ingresos`, `POST /api/registro`, `GET /api/perfil/foto`, `PUT /api/perfil/foto`, `GET /api/personal`, `GET /api/cuentas`, `POST /api/cuentas`, `PATCH /api/cuentas/{id}/permisos` |
-| Actas, puerto 8084 | `GET /api/servicios/actas`, `GET /api/actas/{visitaId}` |
-| Open-Meteo por HTTPS | `GET /v1/search` en `geocoding-api.open-meteo.com`, `GET /v1/forecast` en `api.open-meteo.com` |
+## Probar la aplicación
 
-### Swagger UI · OpenAPI
+La versión disponible en este repositorio es una **demostración académica instalable**. Para probarla se necesita el backend en ejecución y un emulador o teléfono con **Android 8 o posterior**. En Windows, la primera compilación del backend requiere **JDK 17 o posterior** y conexión para descargar las dependencias.
 
-Inicia los microservicios y abre la documentación en el navegador del PC.
+1. Abre el emulador o conecta un teléfono por USB con depuración habilitada. El arranque usa Android SDK Platform-Tools para configurar ADB cuando detecta un dispositivo autorizado.
+2. Arranca los servicios con [IniciarBackendLocal.bat](IniciarBackendLocal.bat) para usar H2 o con [IniciarBackendLaragon.bat](IniciarBackendLaragon.bat) para usar MySQL de Laragon. En una base nueva, ejecuta [ConfigurarJefeTecnico.bat](ConfigurarJefeTecnico.bat) para definir la clave inicial. El correo de esa cuenta es `respinoza@induztek.ejemplo`.
+3. Instala el [APK firmado](Docs/entrega/InduztekSPA-Parcial4.apk) e inicia sesión. Desde **Administrar cuentas**, el jefe técnico puede preparar los perfiles de la demostración. Para mostrar el portal, usa una cuenta cliente de la empresa de la visita que vas a presentar.
 
-| Servicio | Swagger UI | Especificación JSON |
+Los servicios quedan activos en los puertos **8081–8084**. [DetenerMicroservicios.bat](DetenerMicroservicios.bat) permite cerrar los procesos de esta copia del proyecto. El [recorrido completo de demostración](Docs/ENTREGA_PARCIAL4.md#demostración) incluye un ejemplo de pruebas de relé, formalización y consulta del acta.
+
+## Arquitectura y documentación de la API
+
+Android está desarrollado con **Kotlin, Jetpack Compose y Material 3**. Usa **Room sobre SQLite** para el almacenamiento local y **Retrofit** para las peticiones HTTP. El backend está dividido en cuatro servicios **Spring Boot**. Catálogos, Protocolos y Usuarios tienen almacenamiento propio, con H2 para ejecución local o esquemas MySQL independientes al usar Laragon. Actas consulta a Protocolos para entregar la copia sincronizada.
+
+| Microservicio | Responsabilidad | Documentación local |
 | --- | --- | --- |
-| Catálogos | [8081](http://localhost:8081/swagger-ui.html) | [OpenAPI](http://localhost:8081/v3/api-docs) |
-| Protocolos | [8082](http://localhost:8082/swagger-ui.html) | [OpenAPI](http://localhost:8082/v3/api-docs) |
-| Usuarios | [8083](http://localhost:8083/swagger-ui.html) | [OpenAPI](http://localhost:8083/v3/api-docs) |
-| Actas | [8084](http://localhost:8084/swagger-ui.html) | [OpenAPI](http://localhost:8084/v3/api-docs) |
+| **Catálogos** | Empresas, instalaciones, equipos, instrumentos y calibraciones. | [Swagger UI · 8081](http://localhost:8081/swagger-ui.html) · [OpenAPI](http://localhost:8081/v3/api-docs) |
+| **Protocolos** | Visitas, pruebas, mediciones e historial de formalización. | [Swagger UI · 8082](http://localhost:8082/swagger-ui.html) · [OpenAPI](http://localhost:8082/v3/api-docs) |
+| **Usuarios** | Registro, autenticación, roles, permisos e imágenes de perfil. | [Swagger UI · 8083](http://localhost:8083/swagger-ui.html) · [OpenAPI](http://localhost:8083/v3/api-docs) |
+| **Actas** | Entrega la copia del acta con una huella SHA-256 para que Android compruebe su integridad. | [Swagger UI · 8084](http://localhost:8084/swagger-ui.html) · [OpenAPI](http://localhost:8084/v3/api-docs) |
 
-Usa **Authorize** con las credenciales de un usuario para probar las operaciones protegidas. El servidor verifica tanto la cuenta como el rol exigido por el endpoint. La solicitud pública de registro se puede probar sin iniciar sesión.
+Los enlaces de Swagger se abren en el navegador del PC que ejecuta el backend. Usa **Authorize** para probar las operaciones protegidas con el rol correspondiente. Las contraseñas se guardan como hashes **BCrypt** y el backend valida los permisos de las operaciones. Para el clima, Retrofit consulta a **Open-Meteo** mediante `GET /v1/search` para buscar una comuna y `GET /v1/forecast` para obtener temperatura y humedad.
 
-### Registro y activación de una cuenta cliente
+[Ver el diagrama de servicios y los endpoints](Docs/ENTREGA_PARCIAL4.md#microservicios-propios)
 
-1. En **Registrarse**, completa el nombre, correo, RUT y contraseña. Usuarios guarda la solicitud pendiente.
-2. Ingresa como jefe técnico y abre **Administrar cuentas**. Verifica la identidad y la empresa de la persona antes de elegir una empresa existente y pulsar **Aprobar y activar**. Usuarios verifica la empresa en Catálogos. El alta directa desde esta pantalla también sigue disponible.
-3. Ingresa con la cuenta nueva. Su perfil y sus catálogos quedan limitados a la empresa asignada. El jefe técnico puede desactivarla desde la misma pantalla.
+## Pruebas y entrega académica
 
-Usuarios guarda las cuentas con hashes BCrypt, los ingresos confirmados y la foto JPEG de cada cuenta. Los servicios consultan a Usuarios para validar credenciales activas. HTTP Basic se usa con HTTPS en un despliegue remoto. La variante académica admite HTTP en loopback para ADB. La app conserva la credencial remota en memoria durante la sesión.
-
-`POST /api/registro` recibe `nombre`, `correo`, `rut` y `clave`. Responde `201` si guarda la solicitud, `409` por duplicado o `422` por datos inválidos. La app aprueba la cuenta con `PATCH /api/cuentas/{id}/permisos` y el cuerpo `{"rol":"CLIENTE","activo":true,"clienteId":"id-de-la-empresa"}`. Para desactivarla, conserva el rol y la empresa y envía `activo` en `false`.
-
-### Administración y cambio de cuenta
-
-El jefe técnico puede crear cuentas de los cuatro roles en **Administrar cuentas** y editar el rol, la empresa y el estado de otras cuentas. Su propio acceso se protege contra cambios desde esa sesión. Los clientes necesitan una empresa. Los técnicos e ingenieros activos aparecen en el selector de personal de la visita. Protocolos confirma esos perfiles con Usuarios al sincronizar la visita.
-
-Para presentar las cuatro vistas, entra con una cuenta de cada rol usando **Cambiar cuenta → Agregar otra cuenta**. Luego selecciona las cuentas autenticadas desde **Cambiar cuenta**. La app vuelve a verificar cada sesión en los cuatro servicios y conserva las credenciales únicamente en memoria hasta que se cierra el proceso. Asigna una contraseña propia a cada cuenta al crearla.
-
-Consulta el [diagrama de servicios y esquemas](Docs/ENTREGA_PARCIAL4.md#microservicios-propios) para seguir las peticiones del backend.
-
-Desde la raíz en Windows:
-
-```powershell
-$env:JAVA_HOME = 'C:/Program Files/Android/Android Studio/jbr'
-./scripts/IniciarBackend.cmd
-./gradlew.bat :app:createValidacionUnitTestCoverageReport
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/GenerarApkEntrega.ps1
-```
-
-El [APK firmado](Docs/entrega/InduztekSPA-Parcial4.apk) se instala como `cl.induztek.app.entrega` y permite probar los cuatro servicios locales mediante ADB. La llave académica `.jks` queda en `%LOCALAPPDATA%\InduztekSPA\FirmaParcial4`. Consulta la [guía de entrega](Docs/ENTREGA_PARCIAL4.md) para reproducir la compilación, revisar la cobertura y preparar la evidencia grupal.
-
-### Base MySQL en Laragon
-
-Ejecuta [IniciarBackendLaragon.bat](IniciarBackendLaragon.bat) con MySQL de Laragon en `127.0.0.1:3306`. Si MySQL está apagado, el BAT abre Laragon y espera a que pulses **Start All**. Durante la primera configuración crea los esquemas y copia las bases H2 que encuentre con los servicios de esta copia detenidos.
-
-El respaldo de H2 se guarda en `%LOCALAPPDATA%\InduztekSPA\Laragon`. Windows protege allí la credencial del usuario MySQL de los servicios. Si root tiene clave, ejecuta el BAT con `-PedirClaveRoot`. Si Laragon está fuera de `C:\laragon`, indica su carpeta con `-RutaLaragon "D:\Laragon"`.
-
-### Arranque del backend en otro PC con Windows
-
-Copia la carpeta del proyecto. Para compilar el backend necesitas **JDK 17 o posterior** y conexión para descargar Gradle y sus dependencias en la primera ejecución. Los BAT buscan Java en `JAVA_HOME`, Android Studio y `PATH`. Si ya tienes los cuatro JAR en `backend/*/build/libs`, puedes usar `-SinCompilar`.
-
-| BAT | Función |
-| --- | --- |
-| [IniciarBackendLocal.bat](IniciarBackendLocal.bat) | Inicia los cuatro servicios con H2 persistente en `backend/data`. |
-| [IniciarBackendLaragon.bat](IniciarBackendLaragon.bat) | Configura MySQL de Laragon y arranca los cuatro servicios. |
-| [IniciarMicroservicios.bat](IniciarMicroservicios.bat) | Usa Laragon si este usuario de Windows ya lo configuró. En las demás instalaciones arranca con H2. |
-| [ConfigurarJefeTecnico.bat](ConfigurarJefeTecnico.bat) | Crea el acceso inicial o cambia la clave de `respinoza@induztek.ejemplo`. El BAT pide la clave al ejecutarse. |
-| [DetenerMicroservicios.bat](DetenerMicroservicios.bat) | Detiene los servicios de esta copia antes de cambiar de base o apagar el backend. |
-
-El arranque normal usa los puertos **8081–8084**. Si están ocupados, usa `-PuertoBase 18081` al arrancar y repite ese argumento para detener los servicios o configurar el jefe. Con Android SDK Platform-Tools y un emulador o teléfono USB autorizado, el script ajusta ADB reverse para los puertos de la app. En una base nueva, ejecuta **ConfigurarJefeTecnico.bat** antes de probar el ingreso. Si usaste **IniciarBackendLocal.bat** en un PC que también tiene Laragon configurado, agrega `-Base H2` al configurar la clave.
-
-Android sigue hablando con Spring Boot. Un ingreso validado registra una fila en `ingresos` y una foto de perfil sincronizada queda en `fotos_perfil`. Las fotos guardadas en el dispositivo se suben al iniciar sesión con su cuenta. Las visitas, protocolos y mediciones nuevas se envían con la cola de sincronización de Room. Las mediciones antiguas del formulario independiente se conservan localmente porque esos registros carecen de cuenta asociada.
-
-## Equipo
-
-- Integrante identificado en el historial del proyecto: **Francisco Gutierrez**.
-- Datos de entrega por confirmar: demás integrantes, sección o número de equipo y docente.
-- Repositorio público: [N3rd11/InduztekSPA](https://github.com/N3rd11/InduztekSPA).
-- Trello: [InduztekSPA](https://trello.com/b/gePUFvO5/induztekspa)
-
-Completar los datos del equipo y vincular los commits y tarjetas reales en la [guía de entrega](Docs/ENTREGA_PARCIAL4.md).
-
-## Implementado para la Parcial 2
-
-- Cuatro perfiles con permisos diferenciados. Técnico, Ingeniero, Jefe técnico y Cliente.
-- Panel con accesos y datos locales, navegación con `NavHost`/`NavController`, rutas con identificadores, barra inferior y retorno entre pantallas. Logout separa las sesiones.
-- Formularios reutilizables con íconos propios, teclado apropiado, validación central y errores por campo: correo, RUT, fechas, año, valores finitos positivos, tap entero, ambiente, duplicados y calibración vigente.
-- Clientes, instalaciones, equipos e instrumentos con historial de calibración. Solo el jefe técnico administra instrumentos; el cliente consulta su propia empresa.
-- Visitas, participantes, ingeniero asignado, protocolos por equipo y pruebas para los cinco tipos de equipos del caso. Mediciones previas/posteriores en mantenimiento.
-- Cálculos de IP, TTR, contactos y operación del relé; vista previa y persistencia del resultado. Devanados y aislación de celda/interruptor requieren evaluación manual según lo documentado.
-- Historial, filtros, comparación con mediciones anteriores, variación significativa y cinco estados. La formalización es manual; un protocolo formalizado permanece bloqueado.
-- Acta de terreno por visita, constancia de recepción, texto compartible y exportación PDF sin conexión.
-- Cámara y galería en **Mi perfil**. Avatar privado por usuario, actualizado también arriba a la derecha en el inicio; cancelación sin perder foto y recuperación al reabrir la app. En el primer arranque se solicitan cámara y fotos según la versión de Android. Se admite acceso a fotos seleccionadas o rechazo, sin bloquear el login. El perfil permite revisar permisos y abrir Ajustes; el selector de imágenes puede usarse sin acceso general a la galería.
-- Logo proporcionado por el usuario en el acceso, encabezado del inicio e ícono de la app. El PNG original se conserva en `app/src/main/res/drawable-nodpi/logo_induztek.png` sin modificar su contenido.
-- Paleta fija azul y negro, transiciones entre rutas, avisos y actualización del avatar.
-- Room/SQLite para registros y borradores. Se conserva la pantalla de aislación y la tabla anterior. Room sigue en versión 2, con migración aditiva 1→2, sin migración destructiva.
-
-## Ejecutar
-
-1. Abrir la carpeta raíz en Android Studio y sincronizar Gradle. Se verificó con Android Studio 2026.2.1, su JBR 25, Gradle 9.6 y SDK 37.
-2. Iniciar un emulador o conectar un teléfono con Android 8 / API 26 o superior y depuración USB.
-3. Hacer doble clic en [IniciarMicroservicios.bat](IniciarMicroservicios.bat) y pulsar Run en la configuración **app**. El script espera a que respondan los cuatro servicios y configura los túneles ADB si hay un dispositivo activo.
-4. Ingresar el correo y la contraseña asignados. **Configurar conexión**, en la pantalla de acceso, permite cambiar las direcciones de los cuatro servidores.
-
-Antes de arrancar Usuarios por primera vez, asigna la contraseña inicial del jefe técnico en la misma sesión de PowerShell. La cuenta usa el correo `respinoza@induztek.ejemplo`. La contraseña debe tener al menos ocho caracteres y un máximo de 72 bytes.
-
-También puedes hacer doble clic en [ConfigurarJefeTecnico.bat](ConfigurarJefeTecnico.bat). Pide la clave nueva dos veces, reinicia Usuarios si está activo y comprueba que la cuenta acepte la clave.
-
-```powershell
-$env:INDUZTEK_CLAVE_JEFE1 = [Net.NetworkCredential]::new('', (Read-Host 'Contraseña del jefe técnico' -AsSecureString)).Password
-./scripts/IniciarBackend.cmd
-Remove-Item Env:INDUZTEK_CLAVE_JEFE1
-```
-
-Las contraseñas iniciales de los perfiles internos se configuran del mismo modo con `INDUZTEK_CLAVE_TECNICO1` para `mgodoy@induztek.ejemplo` e `INDUZTEK_CLAVE_INGENIERO1` para `acontreras@induztek.ejemplo`. Usuarios conserva el hash aunque se retire la variable. Si Usuarios ya estaba ejecutándose, reinícialo con las variables definidas para aplicar el alta inicial o rotar las contraseñas.
-
-Si el editor marca `ComposableFunction1` aunque Gradle compile, reanalizar/sincronizar el proyecto y comprobar el error real de Build. No borrar Room ni desinstalar la app para resolver errores del editor.
-
-## Demostración funcional
-
-1. Entrar como técnico y abrir **Visitas y actas de terreno**. Crear OT nueva en Planta Molienda, asignando ingeniero y participante.
-2. Iniciar protocolo de `REL-50/51-A`, guardar temperatura y humedad.
-3. Registrar operación de relé `50/51`, instrumento de inyección secundaria vigente, ajuste 5 A, corriente 5,1 A, esperado 100 ms y medido 104 ms. La vista previa indica Aprobado.
-4. Guardar y pasar a **Registrado en terreno**. Volver a la visita y cerrar con receptor ficticio Marcela Fuentes Rojas, RUT `14.226.791-8`, cargo Jefa de mantenimiento.
-5. Consultar/compartir el acta o guardarla como PDF. El acta dice **Pendiente de formalización**.
-6. Entrar como ingeniero, abrir el historial y formalizar explícitamente. El protocolo deja de admitir cambios.
-7. Entrar con una cuenta cliente aprobada para la empresa de la visita. Desde **Trabajos**, buscar la OT, revisar las pruebas y consultar el acta sincronizada. **Mis equipos** muestra el catálogo de esa empresa.
-8. Abrir **Mi perfil** para probar la cámara y el selector de fotos. En una visita abierta, pulsar **Consultar clima con mi ubicación**. En **Sincronización y conexión**, activar **Notificar al sincronizar** y comprobar el aviso de Android.
-
-Para transformadores, interruptores, celdas y cables, registrar cada elemento aplicable o justificar **No realizada**. Debe haber al menos una prueba realizada. La evaluación manual pendiente no se presenta como aprobación automática.
-
-## Arquitectura
-
-```text
-app/src/main/java/cl/induztek/app/
-  navigation/    destinos del flujo
-  ui/            pantallas y grafos de navegación
-    components/  campos, avisos e íconos compartidos
-    theme/       colores, tipografía y archivo AccesoScreen conservado
-  viewmodel/     sesión, acceso, perfil, trabajo, formulario y registro anterior
-  model/         permisos, reglas eléctricas y validaciones de entrada
-  data/          Room, migración, repositorios, semillas ficticias y actas
-  sync/          clientes Retrofit, configuración y sincronización
-```
-
-La UI presenta estado y envía acciones. Los ViewModels gestionan sesión y edición; las reglas de entrada no dependen de Compose y las reglas de negocio se vuelven a comprobar en el repositorio. Las operaciones sobre protocolos y su cola se guardan transaccionalmente. La foto conserva la ruta `foto_<usuario>.jpg` mediante escritura atómica.
-
-## Compilación y pruebas
-
-| Suite | Herramientas | Último resultado verificado |
+| Verificación | Herramientas | Último resultado |
 | --- | --- | --- |
 | Unitarias de Android | JUnit 4 y Robolectric | 47 aprobadas |
 | Backend | JUnit 5 y Spring Boot Test | 15 aprobadas |
-| Instrumentación básica | AndroidJUnitRunner, Compose UI Test y Espresso | 4 aprobadas |
+| Instrumentación básica en emulador | AndroidJUnitRunner, Compose UI Test y Espresso | 4 aprobadas |
 | Cobertura de líneas de lógica | JaCoCo | 81,39 % (1076 de 1322 líneas) |
 
-Desde PowerShell, en la raíz (si no hay otro JDK configurado):
+Para ejecutar las pruebas de Android y del backend desde la raíz del proyecto:
 
 ```powershell
-$env:JAVA_HOME = 'C:/Program Files/Android/Android Studio/jbr'
-./gradlew.bat :app:assembleDebug :app:testValidacionUnitTest :app:lintDebug
-./gradlew.bat :app:createValidacionUnitTestCoverageReport
-./gradlew.bat -p backend test
-./gradlew.bat :app:connectedValidacionAndroidTest
+.\gradlew.bat :app:testValidacionUnitTest :app:createValidacionUnitTestCoverageReport
+.\gradlew.bat -p backend test
 ```
 
-La orden `connectedValidacionAndroidTest` necesita un dispositivo o emulador. Usa el paquete independiente `cl.induztek.app.validacion`. La suite básica prueba el acceso y registro sin servidor. Las pruebas anotadas `RequiereBackend` cubren navegación autenticada, sincronización, perfiles y fotografía por cámara o galería. La ejecución completa de esa suite sigue pendiente.
+Las pruebas instrumentadas que recorren el flujo completo requieren un emulador o dispositivo y un backend con datos de prueba. La guía de entrega describe cómo preparar ese entorno.
 
-APK debug: `app/build/outputs/apk/debug/app-debug.apk`. Informes: `app/build/reports/tests/testValidacionUnitTest/`, `app/build/reports/androidTests/connected/validacion/` y `app/build/reports/lint-results-debug.html`.
+**Desarrollo académico · DSY1105, Parcial 4**
 
-## Backend y sincronización
+Francisco Gutierrez · [Tablero del proyecto](https://trello.com/b/gePUFvO5/induztekspa)
 
-La app guarda los cambios en Room y los envía a los módulos Spring Boot con Retrofit al conectarse.
-
-```powershell
-./scripts/IniciarBackend.cmd
-```
-
-El script compila e inicia los cuatro servicios en los puertos 8081 a 8084, configura `adb reverse` y guarda los datos en H2 bajo `backend/data` o en MySQL de Laragon según el BAT elegido. Los servicios se ejecutan desde copias de los JAR en `backend/runtime`. Si hay varios dispositivos, selecciona uno mediante `ANDROID_SERIAL`. Los logs están en `backend/logs`.
-
-Desde el inicio de sesión, abre **Configurar conexión** para editar las cuatro direcciones. Por defecto se usa `127.0.0.1` con ADB. La variante `entrega` permite HTTP en loopback y usa HTTPS para servicios externos. La sincronización conserva los cambios en conflicto y la formalización requiere una acción del ingeniero o jefe técnico.
-
-Catálogos y Protocolos reciben eventos con ID idempotente, autor y revisión esperada. Responden con 403 por permiso, 409 por conflicto y 422 por regla. Catálogos, Protocolos y Usuarios usan bases H2 o esquemas MySQL independientes. Actas consulta a Protocolos para obtener la copia sincronizada.
-
-Para la instrumentación de integración usa una base de prueba e inicia Usuarios con `INDUZTEK_DEMO=true`. Este modo carga las cuentas ficticias que usa el runner. En la ejecución normal queda desactivado.
-
-```powershell
-./gradlew.bat -p backend test bootJar
-./gradlew.bat :app:connectedValidacionAndroidTest '-Pandroid.testInstrumentationRunnerArguments.notAnnotation=' '-Pandroid.testInstrumentationRunnerArguments.backendIntegration=true'
-```
-
-## Pendientes reales
-
-- Confirmar los datos del equipo, vincular las contribuciones reales en GitHub y Trello y completar la entrega en AVA.
-- Prueba de cámara física y proveedores de galería en otros dispositivos; los tests automatizados usan respuestas nativas controladas.
-- Conciliación manual de conflictos entre dispositivos, PDF del protocolo formalizado y promedio de tiempo de formalización.
-- Endurecimiento y despliegue del backend. No se afirma haber implementado todas las entidades normalizadas del MER ni seguridad de producción.
-
-Las referencias comprimidas del profesor se conservan localmente, excluidas del repositorio; se aplicaron sus técnicas con diseño, nombres y flujos propios de Induztek.
+[Guía de entrega](Docs/ENTREGA_PARCIAL4.md) · [Evidencia de cobertura](Docs/evidencias/cobertura-logica.txt) · [Verificación de firma del APK](Docs/evidencias/firma-apk.txt)
