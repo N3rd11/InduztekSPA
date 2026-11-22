@@ -42,6 +42,19 @@ class AccessHttpTest {
 
     @AfterAll static void pararCatalogo() { CATALOGO.stop(0); }
 
+    @Test void documentacionPublicaMantieneProtegidasLasOperaciones() throws Exception {
+        var openApi = enviar("GET", "/v3/api-docs", null, null);
+        assertEquals(200, openApi.statusCode());
+        var documento = Json.obj(openApi.body());
+        var rutas = documento.getAsJsonObject("paths");
+        assertTrue(rutas.has("/api/session"));
+        assertTrue(rutas.getAsJsonObject("/api/registro").getAsJsonObject("post")
+            .getAsJsonArray("security").isEmpty());
+        assertEquals("basic", documento.getAsJsonObject("components").getAsJsonObject("securitySchemes")
+            .getAsJsonObject("cuentaInduztek").get("scheme").getAsString());
+        assertEquals(401, enviar("GET", "/api/cuentas", null, null).statusCode());
+    }
+
     @Test void altaValidacionesRolesYDesactivacion() throws Exception {
         String jefe = JEFE;
         String ruta = "/api/cuentas/clientes";

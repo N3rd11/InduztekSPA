@@ -13,6 +13,9 @@ subprojects {
         "implementation"("org.springframework.boot:spring-boot-starter-security")
         "implementation"("org.springframework.boot:spring-boot-starter-jdbc")
         "implementation"("com.google.code.gson:gson:2.13.2")
+        if (name == "common") {
+            "implementation"("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
+        }
         "runtimeOnly"("com.h2database:h2")
         if (name != "report-service") {
             "runtimeOnly"("com.mysql:mysql-connector-j")

@@ -20,6 +20,8 @@ flowchart LR
 
 Catálogos, Protocolos y Actas también consultan a Usuarios para autenticar las peticiones que reciben. El módulo `common` comparte esa configuración de seguridad y otras clases Java. Spring Boot lo carga como una biblioteca de los cuatro servicios.
 
+Los cuatro servicios publican su contrato OpenAPI y cuentan con Swagger UI. Durante la defensa puedes abrir **Authorize** para usar la cuenta correspondiente y ejecutar una consulta de ejemplo. [Direcciones de Swagger UI](../README.md#swagger-ui--openapi)
+
 | Módulo | Archivos para seguir una petición | Esquema MySQL |
 | --- | --- | --- |
 | `catalog-service` | `CatalogController` recibe la petición y `CatalogService` aplica las reglas del catálogo. | `induztek_catalogos` |

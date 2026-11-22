@@ -2,6 +2,7 @@ package cl.induztek.common;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -20,6 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.http.HttpMethod;
 
 @Configuration
+@Import(DocumentacionApi.class)
 public class Seguridad {
     public interface Verificador {
         Usuarios.Usuario autenticar(String correo, String clave);
@@ -46,6 +48,8 @@ public class Seguridad {
         return http.csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> {
+                a.requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**",
+                    "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll();
                 if (local.getIfAvailable() != null) a.requestMatchers(HttpMethod.POST, "/api/registro").permitAll();
                 a.anyRequest().authenticated();
             })

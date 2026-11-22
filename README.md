@@ -37,6 +37,19 @@ La app usa cuatro microservicios Spring Boot. Para abrir una sesión, Android ve
 | Actas, puerto 8084 | `GET /api/servicios/actas`, `GET /api/actas/{visitaId}` |
 | Open-Meteo por HTTPS | `GET /v1/search` en `geocoding-api.open-meteo.com`, `GET /v1/forecast` en `api.open-meteo.com` |
 
+### Swagger UI · OpenAPI
+
+Inicia los microservicios y abre la documentación en el navegador del PC.
+
+| Servicio | Swagger UI | Especificación JSON |
+| --- | --- | --- |
+| Catálogos | [8081](http://localhost:8081/swagger-ui.html) | [OpenAPI](http://localhost:8081/v3/api-docs) |
+| Protocolos | [8082](http://localhost:8082/swagger-ui.html) | [OpenAPI](http://localhost:8082/v3/api-docs) |
+| Usuarios | [8083](http://localhost:8083/swagger-ui.html) | [OpenAPI](http://localhost:8083/v3/api-docs) |
+| Actas | [8084](http://localhost:8084/swagger-ui.html) | [OpenAPI](http://localhost:8084/v3/api-docs) |
+
+Usa **Authorize** con las credenciales de un usuario para probar las operaciones protegidas. El servidor verifica tanto la cuenta como el rol exigido por el endpoint. La solicitud pública de registro se puede probar sin iniciar sesión.
+
 ### Registro y activación de una cuenta cliente
 
 1. En **Registrarse**, completa el nombre, correo, RUT y contraseña. Usuarios guarda la solicitud pendiente.
@@ -167,7 +180,7 @@ La UI presenta estado y envía acciones. Los ViewModels gestionan sesión y edic
 | Suite | Herramientas | Último resultado verificado |
 | --- | --- | --- |
 | Unitarias de Android | JUnit 4 y Robolectric | 47 aprobadas |
-| Backend | JUnit 5 y Spring Boot Test | 14 aprobadas |
+| Backend | JUnit 5 y Spring Boot Test | 15 aprobadas |
 | Instrumentación básica | AndroidJUnitRunner, Compose UI Test y Espresso | 4 aprobadas |
 | Cobertura de líneas de lógica | JaCoCo | 81,39 % (1076 de 1322 líneas) |
 
