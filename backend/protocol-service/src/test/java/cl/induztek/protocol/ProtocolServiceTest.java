@@ -19,8 +19,12 @@ class ProtocolServiceTest {
     @Autowired ProtocolService servicio;
     @Autowired Documentos db;
     @MockitoBean CatalogGateway catalogos;
+    @MockitoBean PersonalGateway personal;
     private final Usuarios.Usuario tecnico = Usuarios.TODOS.get(0), ingeniero = Usuarios.TODOS.get(1);
-    @BeforeEach void preparar() { when(catalogos.snapshot(anyString())).thenReturn(Semilla.catalogos()); }
+    @BeforeEach void preparar() {
+        when(catalogos.snapshot(anyString())).thenReturn(Semilla.catalogos());
+        when(personal.rolesActivos(anyString())).thenReturn(Map.of(tecnico.id(), "TECNICO", ingeniero.id(), "INGENIERO"));
+    }
     private JsonObject evento(Usuarios.Usuario u, String tipo, JsonObject payload) {
         return dato("id",UUID.randomUUID().toString(),"usuarioId",u.id(),"tipo",tipo,"payload",payload.toString());
     }
@@ -64,6 +68,31 @@ class ProtocolServiceTest {
         enviar(tecnico,"DATOS_PROTOCOLO",dato("protocolo",p,"revisionEsperada",0));
         assertEquals(409,assertThrows(ResponseStatusException.class,() -> enviar(tecnico,"DATOS_PROTOCOLO",dato("protocolo",p,"revisionEsperada",0))).getStatusCode().value());
         assertEquals(1,l(db.obtener("protocolos",s(p,"id")),"revision"));
+    }
+    @Test void eliminaPruebaConSusMedicionesYReintentaSinDuplicar() {
+        var protocolo = crear();
+        String protocoloId = s(protocolo, "id");
+        String pruebaId = "t-" + protocoloId;
+        var prueba = dato("id", pruebaId, "protocoloId", protocoloId, "tipo", "OPERACION_RELE",
+            "elemento", "50/51", "momento", "UNICA", "realizada", true, "instrumentoId", "inyeccion", "opera", true);
+        var mediciones = new JsonArray();
+        Map.of("ajuste", 5.0, "corriente", 5.1, "esperado", 100.0, "tiempo", 104.0).forEach((codigo, valor) ->
+            mediciones.add(dato("pruebaId", pruebaId, "codigo", codigo, "valor", valor,
+                "unidad", Set.of("ajuste", "corriente").contains(codigo) ? "A" : "ms")));
+        enviar(tecnico, "PRUEBA", dato("prueba", prueba, "mediciones", mediciones, "revisionEsperada", 0));
+
+        var eliminacion = dato("protocoloId", protocoloId, "pruebaId", pruebaId, "revisionEsperada", 0);
+        assertEquals(409, assertThrows(ResponseStatusException.class,
+            () -> enviar(tecnico, "ELIMINAR_PRUEBA", eliminacion)).getStatusCode().value());
+        assertNotNull(db.buscar("pruebas", pruebaId));
+        eliminacion.addProperty("revisionEsperada", 1);
+        var evento = evento(tecnico, "ELIMINAR_PRUEBA", eliminacion);
+        servicio.aplicar(tecnico, "Basic demo", evento);
+        servicio.aplicar(tecnico, "Basic demo", evento);
+
+        assertNull(db.buscar("pruebas", pruebaId));
+        assertTrue(db.todos("mediciones").stream().noneMatch(m -> s(m, "pruebaId").equals(pruebaId)));
+        assertEquals(2, l(db.obtener("protocolos", protocoloId), "revision"));
     }
     @Test void clienteNoRegistraYServidorFiltraPorEmpresa() {
         var cliente = Usuarios.TODOS.stream().filter(u -> u.id().equals("cliente1")).findFirst().orElseThrow();

@@ -25,6 +25,10 @@ import androidx.compose.ui.unit.dp
 import cl.induztek.app.data.*
 import cl.induztek.app.model.*
 import cl.induztek.app.viewmodel.TrabajoViewModel
+import cl.induztek.app.sync.ConfigSync
+import cl.induztek.app.sync.ServiciosRemotos
+import kotlinx.coroutines.CancellationException
+import retrofit2.HttpException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -120,14 +124,14 @@ fun PantallaTrabajo(vm: TrabajoViewModel, seccion: String) {
                 Contenido { DetalleVisita(vm,id, { ir("protocolo",it) }, { ir("acta",id) }) }
             }
             composable("acta/{id}") { back -> Contenido {
-                vm.estado.visitas.find { it.id == back.arguments?.getString("id") }?.let { ActaScreen(it) }
+                vm.estado.visitas.find { it.id == back.arguments?.getString("id") }?.let { ActaScreen(it, vm.usuario) }
             } }
             composable("protocolo/{id}") { back ->
                 val id = back.arguments?.getString("id").orEmpty()
-                Contenido { DetalleProtocolo(vm,id) { ir("prueba",id) } }
+                Contenido { DetalleProtocolo(vm, id) { pruebaId -> nav.navigate("prueba/$id/$pruebaId") } }
             }
-            composable("prueba/{id}") { back -> Contenido {
-                EditorPrueba(vm,back.arguments?.getString("id").orEmpty()) { nav.navigateUp() }
+            composable("prueba/{id}/{pruebaId}") { back -> Contenido {
+                EditorPrueba(vm, back.arguments?.getString("id").orEmpty(), back.arguments?.getString("pruebaId")) { nav.navigateUp() }
             } }
             composable("historial") { Contenido { Historial(vm) { ir("protocolo",it) } } }
         }
@@ -236,15 +240,19 @@ private fun Visitas(vm: TrabajoViewModel, nueva: () -> Unit, abrir: (String) -> 
 
 @Composable
 private fun NuevaVisita(vm: TrabajoViewModel, abrir: (String) -> Unit) {
+    LaunchedEffect(vm) { vm.actualizarPersonal() }
     val f = formulario(vm, "nueva-visita", mapOf("id" to UUID.randomUUID().toString(), "fecha" to LocalDate.now().toString(), "tipo" to "SOLO_PRUEBAS", "participantes" to if (vm.usuario.rol in setOf(Rol.TECNICO, Rol.INGENIERO)) vm.usuario.id else ""))
     Text("Nueva visita", style = MaterialTheme.typography.headlineSmall)
     Campo(f, "ot", "Número de OT *")
     Elegir(f, "instalacion", "Instalación *", vm.estado.instalaciones.map { it.id to "${it.nombre} · ${vm.estado.clientes.find { c -> c.id == it.clienteId }?.nombre}" })
     Campo(f, "fecha", "Fecha (AAAA-MM-DD) *")
-    Elegir(f, "ingeniero", "Ingeniero a cargo *", UsuariosDemo.todos.filter { it.rol == Rol.INGENIERO }.map { it.id to it.nombre })
+    val personalActivo = vm.personal.filter { it.activo }
+    val ingenieros = personalActivo.filter { it.rol == Rol.INGENIERO }
+    Elegir(f, "ingeniero", "Ingeniero a cargo *", ingenieros.map { it.id to it.nombre })
+    if (ingenieros.isEmpty()) Text("Se necesita un ingeniero activo en el directorio para crear la visita.")
     Elegir(f, "tipo", "Tipo de visita", listOf("SOLO_PRUEBAS" to "Solo pruebas", "PRUEBAS_Y_MANT" to "Pruebas y mantenimiento"))
     Text("Participantes de terreno")
-    UsuariosDemo.todos.filter { it.rol in setOf(Rol.TECNICO, Rol.INGENIERO) }.forEach { u ->
+    personalActivo.filter { it.rol in setOf(Rol.TECNICO, Rol.INGENIERO) }.forEach { u ->
         val elegidos = f["participantes"].split(',').filter { it.isNotBlank() }.toSet()
         Row { Checkbox(u.id in elegidos, { marcado -> f.cambiar("participantes", (if (marcado) elegidos + u.id else elegidos - u.id).joinToString(",")) }); Text(u.nombre, Modifier.padding(top = 12.dp)) }
     }
@@ -264,7 +272,10 @@ private fun DetalleVisita(vm: TrabajoViewModel, id: String, abrirProtocolo: (Str
     val protocolos = s.protocolos.filter { it.visitaId == id }
     Text(v.ot, style = MaterialTheme.typography.headlineSmall)
     Text("${s.instalaciones.find { it.id == v.instalacionId }?.nombre} · ${v.fecha}")
-    Text("Ingeniero: ${UsuariosDemo.todos.find { it.id == v.ingenieroId }?.nombre}")
+    Text("Ingeniero: ${vm.nombrePersonal(v.ingenieroId)}")
+    if (v.cierre == null) {
+        s.instalaciones.find { it.id == v.instalacionId }?.let { ClimaVisita(it.comuna) }
+    }
     if (v.cierre == null && Permisos.registrar(vm.usuario)) {
         val f = formulario(vm, "crear-protocolo-$id")
         Elegir(f, "equipo", "Equipo", s.equipos.filter { e -> e.instalacionId == v.instalacionId && protocolos.none { it.equipoId == e.id } }.map { it.id to "${it.tag} · ${TipoEquipo.valueOf(it.tipo).titulo}" })
@@ -291,18 +302,20 @@ private fun tituloEstado(usuario: UsuarioDemo, p: ProtocoloEntity) =
     if (usuario.rol == Rol.CLIENTE && p.estado in setOf("REGISTRADO_TERRENO", "OBSERVADO")) "Pendiente de formalización" else EstadoProtocolo.valueOf(p.estado).titulo
 
 @Composable
-private fun DetalleProtocolo(vm: TrabajoViewModel, id: String, editarPrueba: () -> Unit) {
+private fun DetalleProtocolo(vm: TrabajoViewModel, id: String, editarPrueba: (String) -> Unit) {
     val s = vm.estado
     val p = s.protocolos.find { it.id == id } ?: return
     val e = s.equipos.first { it.id == p.equipoId }
     Text("${e.tag} · ${tituloEstado(vm.usuario, p)}", style = MaterialTheme.typography.headlineSmall)
     Text(p.numero, style = MaterialTheme.typography.bodySmall)
-    Text("${DateFormat.getDateTimeInstance().format(Date(p.fecha))}\nResponsable: ${UsuariosDemo.todos.find { it.id == p.autorId }?.nombre}")
+    Text("${DateFormat.getDateTimeInstance().format(Date(p.fecha))}\nResponsable: ${vm.nombrePersonal(p.autorId)}")
     Text("Resultado global: ${ProtocolosRepository.global(s, id)}", fontWeight = FontWeight.Bold)
     s.protocolos.find { it.reemplazaId == p.id }?.let { Text("Reemplazado por nº ${it.numero}") }
     p.reemplazaId?.let { reemplaza -> Text("Reemplaza a ${s.protocolos.find { it.id == reemplaza }?.numero ?: reemplaza}") }
     val f = formulario(vm, "datos-$id", mapOf("temperatura" to (p.temperatura?.toString() ?: ""), "humedad" to (p.humedad?.toString() ?: ""), "mantenimiento" to p.mantenimiento, "comentario" to p.comentario))
-    if (ReglasProtocolos.editable(vm.usuario, p.autorId, EstadoProtocolo.valueOf(p.estado))) {
+    val editable = ReglasProtocolos.editable(vm.usuario, p.autorId, EstadoProtocolo.valueOf(p.estado))
+    var pruebaAEliminar by rememberSaveable(id) { mutableStateOf<String?>(null) }
+    if (editable) {
         Campo(f, "temperatura", "Temperatura ambiente (°C) *", true); Campo(f, "humedad", "Humedad relativa (%) *", true)
         if (s.visitas.first { it.id == p.visitaId }.tipo == "PRUEBAS_Y_MANT") Campo(f, "mantenimiento", "Mantenimiento realizado por equipo *", multilinea = true)
         Campo(f, "comentario", "Observaciones del equipo", multilinea = true)
@@ -310,7 +323,7 @@ private fun DetalleProtocolo(vm: TrabajoViewModel, id: String, editarPrueba: () 
             val campos = listOf("temperatura", "humedad") + if (s.visitas.first { it.id == p.visitaId }.tipo == "PRUEBAS_Y_MANT") listOf("mantenimiento") else emptyList()
             if (f.requerir(*campos.toTypedArray())) vm.accion("Datos guardados") { datos(vm.usuario, id, ReglasProtocolos.numero(f["temperatura"]), ReglasProtocolos.numero(f["humedad"]), f["mantenimiento"], f["comentario"]) }
         }
-        Accion(vm, "Registrar o corregir pruebas") { editarPrueba() }
+        Accion(vm, "Registrar o corregir pruebas") { editarPrueba("nueva") }
         Accion(vm, "Pasar a Registrado en terreno") { vm.accion("Registrado en terreno; pendiente de formalización") { transicion(vm.usuario, id, EstadoProtocolo.REGISTRADO_TERRENO, "") } }
     } else Text("Ambiente: ${p.temperatura} °C / ${p.humedad} % HR\n${p.mantenimiento}\n${p.comentario}")
     Text("Pruebas y mediciones", style = MaterialTheme.typography.titleLarge)
@@ -320,6 +333,12 @@ private fun DetalleProtocolo(vm: TrabajoViewModel, id: String, editarPrueba: () 
         val medidas = s.mediciones.filter { it.pruebaId == t.id }.joinToString("\n") { "${it.codigo}: ${it.valor} ${it.unidad}" }
         val instru = s.instrumentos.find { it.id == t.instrumentoId }
         Ficha("${TipoPrueba.valueOf(t.tipo).titulo} · ${t.elemento} · ${t.momento}", if (!t.realizada) "No realizada: ${t.motivo}" else "$medidas\n${t.detalle}\n${t.resultado ?: "Pendiente de evaluación manual"}\nInstrumento: ${instru?.nombre} · ${instru?.serie}\n${t.comentario}")
+        if (editable) {
+            Row {
+                TextButton(enabled = !vm.ocupado, onClick = { editarPrueba(t.id) }) { Text("Editar prueba") }
+                TextButton(enabled = !vm.ocupado, onClick = { pruebaAEliminar = t.id }) { Text("Eliminar prueba") }
+            }
+        }
         val manual = t.tipo == "DEVANADOS" || t.tipo == "AISLACION" && e.tipo in setOf("INTERRUPTOR", "CELDA_MT")
         if (manual && t.realizada && Permisos.revisar(vm.usuario) && p.estado in setOf("BORRADOR", "OBSERVADO", "REGISTRADO_TERRENO")) {
             val evaluacion = formulario(vm, "evaluacion-${t.id}", mapOf("resultado" to (t.resultado ?: "APROBADO"), "comentario" to t.comentario))
@@ -327,6 +346,24 @@ private fun DetalleProtocolo(vm: TrabajoViewModel, id: String, editarPrueba: () 
             Campo(evaluacion, "comentario", "Justificación del ingeniero *", multilinea = true)
             Accion(vm, "Guardar evaluación de ${t.elemento}") { if (evaluacion.requerir("comentario")) vm.accion("Evaluación guardada") { evaluarManual(vm.usuario, t.id, ResultadoPrueba.valueOf(evaluacion["resultado"]), evaluacion["comentario"]) } }
         }
+    }
+    if (editable) pruebas.find { it.id == pruebaAEliminar }?.let { seleccion ->
+        AlertDialog(
+            onDismissRequest = { pruebaAEliminar = null },
+            title = { Text("Eliminar prueba de ${seleccion.elemento}") },
+            text = { Text("Se quitará la prueba y sus mediciones de este protocolo.") },
+            dismissButton = { TextButton(onClick = { pruebaAEliminar = null }) { Text("Cancelar") } },
+            confirmButton = {
+                TextButton(onClick = {
+                    pruebaAEliminar = null
+                    vm.accion("Prueba eliminada") {
+                        eliminarPrueba(vm.usuario, id, seleccion.id)
+                        vm.guardarBorrador("medicion-$id-${seleccion.tipo}-${seleccion.elemento}-${seleccion.momento}", emptyMap())
+                        vm.guardarBorrador("evaluacion-${seleccion.id}", emptyMap())
+                    }
+                }) { Text("Eliminar") }
+            }
+        )
     }
     Text("Comparación histórica", style = MaterialTheme.typography.titleLarge)
     val comparaciones = ProtocolosRepository.comparaciones(s, p)
@@ -346,22 +383,32 @@ private fun DetalleProtocolo(vm: TrabajoViewModel, id: String, editarPrueba: () 
     Text("Trazabilidad", style = MaterialTheme.typography.titleLarge)
     s.historial.filter { it.protocoloId == id }.forEach { h ->
         val motivo = h.motivo.removePrefix("Dato ficticio del Anexo 9; ").replaceFirstChar { it.uppercase() }
-        Text("${EstadoProtocolo.valueOf(h.nuevo).titulo} · ${UsuariosDemo.todos.find { it.id == h.usuarioId }?.nombre}\n${DateFormat.getDateTimeInstance().format(Date(h.fecha))} · $motivo")
+        Text("${EstadoProtocolo.valueOf(h.nuevo).titulo} · ${vm.nombrePersonal(h.usuarioId)}\n${DateFormat.getDateTimeInstance().format(Date(h.fecha))} · $motivo")
     }
 }
 
 @Composable
-private fun EditorPrueba(vm: TrabajoViewModel, protocoloId: String, volver: () -> Unit) {
+private fun EditorPrueba(vm: TrabajoViewModel, protocoloId: String, pruebaId: String?, volver: () -> Unit) {
     val s = vm.estado
     val p = s.protocolos.find { it.id == protocoloId } ?: return
     val equipo = TipoEquipo.valueOf(s.equipos.first { it.id == p.equipoId }.tipo)
-    var tipo by rememberSaveable(protocoloId) { mutableStateOf(ReglasProtocolos.tipos(equipo).first().name) }
-    var elemento by rememberSaveable(tipo) { mutableStateOf(ReglasProtocolos.elementos(equipo, TipoPrueba.valueOf(tipo)).first()) }
-    var momento by rememberSaveable { mutableStateOf("UNICA") }
-    Text("Registrar prueba", style = MaterialTheme.typography.headlineSmall)
-    Selector("Prueba", tipo, ReglasProtocolos.tipos(equipo).map { it.name to it.titulo }) { tipo = it }
-    Selector("Elemento", elemento, ReglasProtocolos.elementos(equipo, TipoPrueba.valueOf(tipo)).map { it to it }) { elemento = it }
-    if (s.visitas.first { it.id == p.visitaId }.tipo == "PRUEBAS_Y_MANT") Selector("Momento", momento, listOf("UNICA" to "Única", "PREVIA" to "Previa al mantenimiento", "POSTERIOR" to "Posterior al mantenimiento")) { momento = it }
+    val seleccion = s.pruebas.find { it.id == pruebaId && it.protocoloId == protocoloId }
+    if (pruebaId != "nueva" && seleccion == null) {
+        Text("La prueba ya no está disponible.")
+        return
+    }
+    var tipo by rememberSaveable(protocoloId, pruebaId) { mutableStateOf(seleccion?.tipo ?: ReglasProtocolos.tipos(equipo).first().name) }
+    var elemento by rememberSaveable(tipo, pruebaId) { mutableStateOf(seleccion?.elemento ?: ReglasProtocolos.elementos(equipo, TipoPrueba.valueOf(tipo)).first()) }
+    var momento by rememberSaveable(pruebaId) { mutableStateOf(seleccion?.momento ?: "UNICA") }
+    if (seleccion == null) {
+        Text("Registrar prueba", style = MaterialTheme.typography.headlineSmall)
+        Selector("Prueba", tipo, ReglasProtocolos.tipos(equipo).map { it.name to it.titulo }) { tipo = it }
+        Selector("Elemento", elemento, ReglasProtocolos.elementos(equipo, TipoPrueba.valueOf(tipo)).map { it to it }) { elemento = it }
+        if (s.visitas.first { it.id == p.visitaId }.tipo == "PRUEBAS_Y_MANT") Selector("Momento", momento, listOf("UNICA" to "Única", "PREVIA" to "Previa al mantenimiento", "POSTERIOR" to "Posterior al mantenimiento")) { momento = it }
+    } else {
+        Text("Editar prueba", style = MaterialTheme.typography.headlineSmall)
+        Text("${TipoPrueba.valueOf(tipo).titulo} · $elemento · $momento")
+    }
     val anterior = s.pruebas.find { it.protocoloId == p.id && it.tipo == tipo && it.elemento == elemento && it.momento == momento }
     val clave = "medicion-${p.id}-$tipo-$elemento-$momento"
     val inicial = mapOf("realizada" to (anterior?.realizada?.toString() ?: "true"), "motivo" to anterior?.motivo.orEmpty(), "instrumento" to anterior?.instrumentoId.orEmpty(), "comentario" to anterior?.comentario.orEmpty(), "opera" to (anterior?.opera?.toString() ?: "true"), "unidad" to "MΩ") + s.mediciones.filter { it.pruebaId == anterior?.id }.associate { it.codigo to it.valor.toString() }
@@ -409,7 +456,7 @@ private fun Historial(vm: TrabajoViewModel, abrir: (String) -> Unit) {
     Selector("Estado", estado, listOf("" to "Todos") + EstadoProtocolo.entries.filter { vm.usuario.rol != Rol.CLIENTE || it !in setOf(EstadoProtocolo.BORRADOR, EstadoProtocolo.ANULADO) }.map { it.name to it.titulo }) { estado = it }
     if (vm.usuario.rol != Rol.CLIENTE) {
         Selector("Cliente", cliente, listOf("" to "Todos") + s.clientes.map { it.id to it.nombre }) { cliente = it }
-        Selector("Responsable", tecnico, listOf("" to "Todos") + UsuariosDemo.todos.filter { it.rol != Rol.CLIENTE }.map { it.id to it.nombre }) { tecnico = it }
+        Selector("Responsable", tecnico, listOf("" to "Todos") + vm.personal.map { it.id to it.nombre }) { tecnico = it }
     }
     val protocolos = s.protocolos.filter { (equipoId.isBlank() || it.equipoId == equipoId) && (estado.isBlank() || it.estado == estado) && (cliente.isBlank() || s.clienteDeProtocolo(it) == cliente) && (tecnico.isBlank() || it.autorId == tecnico) }.sortedByDescending { it.fecha }
     if (protocolos.isEmpty()) Text("No hay protocolos para estos filtros.")
@@ -423,11 +470,13 @@ private fun Historial(vm: TrabajoViewModel, abrir: (String) -> Unit) {
 }
 
 @Composable
-private fun ActaScreen(visita: VisitaEntity) {
+internal fun ActaScreen(visita: VisitaEntity, usuario: UsuarioDemo) {
     val contexto = LocalContext.current
-    val textoActa = remember(visita.acta) { Actas.paraEntrega(visita.acta) }
+    var copiaRemota by remember(visita.id, visita.acta) { mutableStateOf<String?>(null) }
+    val textoActa = remember(visita.acta, copiaRemota) { Actas.paraEntrega(copiaRemota ?: visita.acta) }
     val scope = rememberCoroutineScope()
     var mensaje by remember { mutableStateOf("") }
+    var consultando by remember { mutableStateOf(false) }
     val guardarPdf = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         if (uri != null) scope.launch {
             try {
@@ -455,6 +504,25 @@ private fun ActaScreen(visita: VisitaEntity) {
         }
     }
     Text("Acta de terreno", style = MaterialTheme.typography.headlineSmall)
+    OutlinedButton(enabled = !consultando, onClick = {
+        consultando = true
+        scope.launch {
+            try {
+                val id = visita.id
+                val copia = ServiciosRemotos.actas(ConfigSync(contexto).actas, usuario).acta(id)
+                require(copia.esValida(id)) { "Acta inválida" }
+                copiaRemota = copia.texto
+                mensaje = "Copia consultada en el servidor de actas."
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                mensaje = if (error is HttpException && error.code() == 404) "El acta aún no está disponible en el servidor."
+                    else "No se pudo consultar el servidor de actas. Puedes usar la copia local."
+            } finally {
+                consultando = false
+            }
+        }
+    }) { Text(if (consultando) "Consultando acta…" else "Consultar copia sincronizada") }
     Button(onClick = { guardarPdf.launch("Acta-${visita.ot}.pdf") }, modifier = Modifier.fillMaxWidth()) { Text("Guardar acta en PDF") }
     OutlinedButton(onClick = {
         try { contexto.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_SUBJECT, "Acta ${visita.ot}"); putExtra(Intent.EXTRA_TEXT, textoActa) }, "Entregar acta al cliente")) }

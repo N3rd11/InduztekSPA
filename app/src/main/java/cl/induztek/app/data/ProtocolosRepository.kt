@@ -9,7 +9,10 @@ import java.time.ZoneId
 import java.util.UUID
 import kotlin.math.abs
 
-class ProtocolosRepository(private val db: InduztekDatabase) {
+class ProtocolosRepository(
+    private val db: InduztekDatabase,
+    private val personal: () -> List<Persona> = { UsuariosDemo.todos.map { Persona(it.id, it.nombre, it.rol, it.activo) } }
+) {
     val dao = db.mvpDao()
     private val gson = Gson()
     fun id(): String = UUID.randomUUID().toString()
@@ -28,7 +31,14 @@ class ProtocolosRepository(private val db: InduztekDatabase) {
     suspend fun cliente(u: UsuarioDemo, c: ClienteEntity) = db.withTransaction {
         registro(u)
         require(c.nombre.isNotBlank() && ReglasProtocolos.rutValido(c.rut)) { "Razón social y RUT válido son obligatorios" }
-        val normalizado = c.copy(rut = c.rut.replace(".", "").replace("-", "").uppercase().let { it.dropLast(1) + "-" + it.last() })
+        val correo = c.correo.trim()
+        val telefono = c.telefono.trim()
+        val errorContacto = ValidacionesFormulario.campo("correo", correo) ?: ValidacionesFormulario.campo("telefono", telefono)
+        require(errorContacto == null) { errorContacto.orEmpty() }
+        val normalizado = c.copy(
+            rut = c.rut.replace(".", "").replace("-", "").trim().uppercase().let { it.dropLast(1) + "-" + it.last() },
+            correo = correo, telefono = telefono
+        )
         require(dao.clientes().none { it.id != c.id && it.rut.replace(".", "").replace("-", "") == normalizado.rut.replace("-", "") }) { "Ya existe un cliente con ese RUT" }
         dao.guardar(normalizado); encolar(u, "CLIENTE", c.id, normalizado)
     }
@@ -65,9 +75,10 @@ class ProtocolosRepository(private val db: InduztekDatabase) {
         registro(u)
         require(v.ot.isNotBlank() && dao.instalaciones().any { it.id == v.instalacionId }) { "Selecciona instalación y número de OT" }
         LocalDate.parse(v.fecha)
-        require(UsuariosDemo.todos.any { it.id == v.ingenieroId && it.rol == Rol.INGENIERO && it.activo }) { "Asigna un ingeniero a cargo" }
+        val asignables = personal().filter { it.activo }.associateBy { it.id }
+        require(asignables[v.ingenieroId]?.rol == Rol.INGENIERO) { "Asigna un ingeniero activo a cargo" }
         require(v.tipo in setOf("SOLO_PRUEBAS", "PRUEBAS_Y_MANT")) { "Tipo de visita inválido" }
-        require(participantes.isNotEmpty() && participantes.all { id -> UsuariosDemo.todos.any { it.id == id && it.rol in setOf(Rol.TECNICO, Rol.INGENIERO) } }) { "Selecciona participantes de terreno" }
+        require(participantes.isNotEmpty() && participantes.all { asignables[it]?.rol in setOf(Rol.TECNICO, Rol.INGENIERO) }) { "Selecciona participantes activos de terreno" }
         require(dao.visitas().none { it.id == v.id || it.ot == v.ot }) { "La OT ya está registrada" }
         val nueva = v.copy(creadorId = u.id, cierre = null, recepcion = null, acta = "")
         dao.guardar(nueva)
@@ -144,6 +155,18 @@ class ProtocolosRepository(private val db: InduztekDatabase) {
         encolar(u, "EVALUACION", p.id, mapOf("prueba" to nueva, "revisionEsperada" to p.revision))
     }
 
+    suspend fun eliminarPrueba(u: UsuarioDemo, protocoloId: String, pruebaId: String) = db.withTransaction {
+        val protocolo = editable(u, protocoloId)
+        require(dao.pruebas().any { it.id == pruebaId && it.protocoloId == protocolo.id }) {
+            "La prueba ya no está disponible en este protocolo"
+        }
+        dao.reemplazarMediciones(pruebaId)
+        dao.quitarPrueba(pruebaId)
+        dao.guardar(protocolo.copy(revision = protocolo.revision + 1))
+        encolar(u, "ELIMINAR_PRUEBA", protocolo.id, mapOf("protocoloId" to protocolo.id,
+            "pruebaId" to pruebaId, "revisionEsperada" to protocolo.revision))
+    }
+
     suspend fun transicion(u: UsuarioDemo, id: String, estado: EstadoProtocolo, motivo: String) = db.withTransaction {
         val s = cargar()
         val p = s.protocolos.first { it.id == id }
@@ -178,7 +201,7 @@ class ProtocolosRepository(private val db: InduztekDatabase) {
         require(ps.isNotEmpty() && ps.all { it.estado in setOf("REGISTRADO_TERRENO", "ANULADO") }) { "Todos los protocolos deben estar registrados en terreno o anulados" }
         val ahora = System.currentTimeMillis()
         val nueva = v.copy(cierre = ahora, receptor = nombre, receptorRut = rut, receptorCargo = cargo, recepcion = ahora)
-        val cerrada = nueva.copy(acta = Actas.generar(s, nueva))
+        val cerrada = nueva.copy(acta = Actas.generar(s, nueva, personal().associate { it.id to it.nombre }))
         dao.guardar(cerrada); encolar(u, "CIERRE", id, cerrada)
     }
 

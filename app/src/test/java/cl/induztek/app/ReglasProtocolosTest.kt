@@ -14,6 +14,35 @@ class ReglasProtocolosTest {
         assertEquals(ResultadoPrueba.OBSERVADO, ReglasAislacion.evaluar(100.0, 100.0).resultado)
         assertEquals(ResultadoPrueba.APROBADO, ReglasAislacion.evaluar(100.0, 200.0).resultado)
         assertEquals(1.8, ReglasAislacion.evaluar(6100.0, 10980.0).indice, 0.001)
+        assertEquals(ResultadoPrueba.RECHAZADO, ReglasAislacion.evaluar(200.0, 100.0).resultado)
+        assertThrows(IllegalArgumentException::class.java) { ReglasAislacion.evaluar(0.0, 100.0) }
+        assertThrows(IllegalArgumentException::class.java) { ReglasAislacion.evaluar(100.0, Double.NaN) }
+        assertThrows(IllegalArgumentException::class.java) { ReglasAislacion.evaluar(Double.MIN_VALUE, Double.MAX_VALUE) }
+    }
+    @Test fun parametrosYResultadosManualesCorrespondenAlEquipo() {
+        assertEquals(listOf("AT-BT", "AT-T", "BT-T"), ReglasProtocolos.elementos(TipoEquipo.TRANSFORMADOR, TipoPrueba.AISLACION))
+        assertEquals(3, ReglasProtocolos.elementos(TipoEquipo.CABLE, TipoPrueba.AISLACION).size)
+        assertEquals(3, ReglasProtocolos.elementos(TipoEquipo.TRANSFORMADOR, TipoPrueba.TTR).size)
+        assertEquals(6, ReglasProtocolos.elementos(TipoEquipo.TRANSFORMADOR, TipoPrueba.DEVANADOS).size)
+        assertEquals(3, ReglasProtocolos.elementos(TipoEquipo.CELDA_MT, TipoPrueba.CONTACTOS).size)
+        assertEquals(listOf("50/51"), ReglasProtocolos.elementos(TipoEquipo.RELE, TipoPrueba.OPERACION_RELE))
+        val valores = mapOf("tension" to 5.0, "lectura1" to 210.0)
+        assertNull(ReglasProtocolos.evaluar(TipoEquipo.CELDA_MT, TipoPrueba.AISLACION, valores, null).resultado)
+        assertNull(ReglasProtocolos.evaluar(TipoEquipo.TRANSFORMADOR, TipoPrueba.DEVANADOS, mapOf("resistencia" to 10.0), null).resultado)
+        assertEquals(ResultadoPrueba.APROBADO,
+            ReglasProtocolos.evaluar(TipoEquipo.CABLE, TipoPrueba.AISLACION, valores + ("lectura10" to 420.0), null).resultado)
+        assertThrows(IllegalArgumentException::class.java) {
+            ReglasProtocolos.evaluar(TipoEquipo.CABLE, TipoPrueba.AISLACION, valores, null)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            ReglasProtocolos.evaluar(TipoEquipo.RELE, TipoPrueba.AISLACION, valores, null)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            ReglasProtocolos.evaluar(TipoEquipo.TRANSFORMADOR, TipoPrueba.TTR, mapOf("teorica" to 5.0, "medida" to 5.1, "tap" to 1.5), null)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            ReglasProtocolos.evaluar(TipoEquipo.CELDA_MT, TipoPrueba.CONTACTOS, mapOf("resistencia" to 10.0), null)
+        }
     }
     @Test fun limitesTtrContactosYRele() {
         fun ttr(m: Double) = ReglasProtocolos.evaluar(TipoEquipo.TRANSFORMADOR, TipoPrueba.TTR, mapOf("teorica" to 100.0, "medida" to m, "tap" to 3.0), null).resultado

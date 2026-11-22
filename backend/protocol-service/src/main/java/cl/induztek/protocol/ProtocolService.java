@@ -3,7 +3,12 @@ package cl.induztek.protocol;
 import cl.induztek.common.*;
 import com.google.gson.*;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -13,8 +18,13 @@ import static cl.induztek.common.Json.*;
 public class ProtocolService {
     private final Documentos db;
     private final CatalogGateway catalogos;
-    public ProtocolService(Documentos db, CatalogGateway catalogos) {
+    private final PersonalGateway personal;
+    private final TransactionTemplate transaccion;
+
+    public ProtocolService(Documentos db, CatalogGateway catalogos, PersonalGateway personal, PlatformTransactionManager gestor) {
         this.db = db; this.catalogos = catalogos;
+        this.personal = personal;
+        this.transaccion = new TransactionTemplate(gestor);
         if (db.todos("protocolos").isEmpty()) Semilla.cargar(db,Semilla.protocolos());
     }
     private List<JsonObject> lista(JsonObject datos, String tabla) {
@@ -23,17 +33,33 @@ public class ProtocolService {
     private JsonObject catalogo(JsonObject c, String tabla, String id) {
         return lista(c,tabla).stream().filter(o -> s(o,"id").equals(id)).findFirst().orElseThrow(() -> new IllegalArgumentException("No existe "+tabla+": "+id));
     }
+    private Set<String> identificadores(List<JsonObject> documentos) {
+        return documentos.stream().map(o -> s(o, "id")).collect(Collectors.toSet());
+    }
+
+    public JsonObject acta(Usuarios.Usuario usuario, String autorizacion, String visitaId) {
+        var visita = db.obtener("visitas", visitaId);
+        if (l(visita, "cierre") == 0 || s(visita, "acta").isBlank() ||
+            !usuario.interno() && !identificadores(lista(catalogos.snapshot(autorizacion), "instalaciones")).contains(s(visita, "instalacionId"))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Acta no disponible");
+        }
+        return dato("visitaId", visitaId, "ot", s(visita, "ot"), "texto", s(visita, "acta"), "cierre", l(visita, "cierre"));
+    }
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public JsonObject snapshot(Usuarios.Usuario u, String authorization) {
         var c = catalogos.snapshot(authorization);
-        var instalaciones = lista(c,"instalaciones");
-        var visitas = db.todos("visitas").stream().filter(v -> instalaciones.stream().anyMatch(i -> s(i,"id").equals(s(v,"instalacionId")))).toList();
-        var protocolos = db.todos("protocolos").stream().filter(p -> visitas.stream().anyMatch(v -> s(v,"id").equals(s(p,"visitaId"))) && (u.interno() || !List.of("BORRADOR","ANULADO").contains(s(p,"estado")))).toList();
-        var pruebas = db.todos("pruebas").stream().filter(t -> protocolos.stream().anyMatch(p -> s(p,"id").equals(s(t,"protocoloId")))).toList();
+        var instalaciones = identificadores(lista(c, "instalaciones"));
+        var visitas = db.todos("visitas").stream().filter(v -> instalaciones.contains(s(v, "instalacionId"))).toList();
+        var idsVisitas = identificadores(visitas);
+        var protocolos = db.todos("protocolos").stream().filter(p -> idsVisitas.contains(s(p, "visitaId")) && (u.interno() || !List.of("BORRADOR","ANULADO").contains(s(p,"estado")))).toList();
+        var idsProtocolos = identificadores(protocolos);
+        var pruebas = db.todos("pruebas").stream().filter(t -> idsProtocolos.contains(s(t, "protocoloId"))).toList();
+        var idsPruebas = identificadores(pruebas);
         var salida = new JsonObject();
         salida.add("visitas",GSON.toJsonTree(visitas)); salida.add("protocolos",GSON.toJsonTree(protocolos)); salida.add("pruebas",GSON.toJsonTree(pruebas));
-        salida.add("participantes",GSON.toJsonTree(db.todos("participantes").stream().filter(a -> visitas.stream().anyMatch(v -> s(v,"id").equals(s(a,"visitaId")))).toList()));
-        salida.add("mediciones",GSON.toJsonTree(db.todos("mediciones").stream().filter(m -> pruebas.stream().anyMatch(t -> s(t,"id").equals(s(m,"pruebaId")))).toList()));
-        salida.add("historial",GSON.toJsonTree(db.todos("historial").stream().filter(h -> protocolos.stream().anyMatch(p -> s(p,"id").equals(s(h,"protocoloId")))).toList()));
+        salida.add("participantes",GSON.toJsonTree(db.todos("participantes").stream().filter(a -> idsVisitas.contains(s(a, "visitaId"))).toList()));
+        salida.add("mediciones",GSON.toJsonTree(db.todos("mediciones").stream().filter(m -> idsPruebas.contains(s(m, "pruebaId"))).toList()));
+        salida.add("historial",GSON.toJsonTree(db.todos("historial").stream().filter(h -> idsProtocolos.contains(s(h, "protocoloId"))).toList()));
         return salida;
     }
     private void editable(Usuarios.Usuario u, JsonObject p) {
@@ -62,8 +88,11 @@ public class ProtocolService {
         }
         return false;
     }
-    @Transactional
     public synchronized void aplicar(Usuarios.Usuario u, String authorization, JsonObject evento) {
+        transaccion.executeWithoutResult(estado -> aplicarEvento(u, authorization, evento));
+    }
+
+    private void aplicarEvento(Usuarios.Usuario u, String authorization, JsonObject evento) {
         permiso(u.interno()); if (db.repetido(evento,u)) return;
         var c = catalogos.snapshot(authorization);
         var payload = obj(s(evento,"payload")); String tipo = s(evento,"tipo");
@@ -73,12 +102,14 @@ public class ProtocolService {
                 catalogo(c,"instalaciones",s(v,"instalacionId")); LocalDate.parse(s(v,"fecha"));
                 exigir(!s(v,"ot").isBlank() && List.of("SOLO_PRUEBAS","PRUEBAS_Y_MANT").contains(s(v,"tipo")),"OT o tipo inválido");
                 exigir(db.buscar("visitas",s(v,"id")) == null && db.todos("visitas").stream().noneMatch(a -> s(a,"ot").equals(s(v,"ot"))),"Visita u OT duplicada");
-                exigir(Usuarios.TODOS.stream().anyMatch(a -> a.id().equals(s(v,"ingenieroId")) && a.rol().equals("INGENIERO")),"Ingeniero a cargo obligatorio");
+                var roles = personal.rolesActivos(authorization);
+                exigir("INGENIERO".equals(roles.get(s(v,"ingenieroId"))),"Ingeniero a cargo obligatorio");
                 exigir(s(v,"creadorId").equals(u.id()) && l(v,"cierre")==0,"Autor o estado inválido");
                 var participantes = payload.getAsJsonArray("participantes"); exigir(!participantes.isEmpty(),"Participantes obligatorios");
                 participantes.forEach(a -> {
                     String usuario = a.getAsString();
-                    exigir(Usuarios.TODOS.stream().anyMatch(x -> x.id().equals(usuario) && List.of("TECNICO","INGENIERO").contains(x.rol())),"Participante inválido");
+                    String rol = roles.get(usuario);
+                    exigir("TECNICO".equals(rol) || "INGENIERO".equals(rol), "Participante inválido");
                     db.guardar("participantes",s(v,"id")+":"+usuario,dato("visitaId",s(v,"id"),"usuarioId",usuario));
                 });
                 db.guardar("visitas",s(v,"id"),v);
@@ -117,9 +148,21 @@ public class ProtocolService {
                     String resultado = ReglasElectricas.evaluar(te,tp,valores,d(equipo,"maxContactos"),b(t,"opera"));
                     if (resultado==null) t.remove("resultado"); else t.addProperty("resultado",resultado);
                 } else { exigir(!s(t,"motivo").isBlank() && mediciones.isEmpty(),"Prueba no realizada requiere motivo y no tiene mediciones"); t.remove("resultado"); t.remove("instrumentoId"); }
-                db.todos("mediciones").stream().filter(m -> s(m,"pruebaId").equals(s(t,"id"))).forEach(m -> db.quitar("mediciones",s(t,"id")+":"+s(m,"codigo")));
+                quitarMediciones(s(t,"id"));
                 mediciones.forEach(m -> db.guardar("mediciones",s(t,"id")+":"+s(m.getAsJsonObject(),"codigo"),m.getAsJsonObject()));
                 db.guardar("pruebas",s(t,"id"),t); actualizar(p);
+            }
+            case "ELIMINAR_PRUEBA" -> {
+                var protocolo = db.obtener("protocolos", s(payload, "protocoloId"));
+                editable(u, protocolo);
+                db.revision(protocolo, l(payload, "revisionEsperada"));
+                String pruebaId = s(payload, "pruebaId");
+                var prueba = db.obtener("pruebas", pruebaId);
+                exigir(s(prueba, "protocoloId").equals(s(protocolo, "id")),
+                    "La prueba no pertenece al protocolo");
+                quitarMediciones(pruebaId);
+                db.quitar("pruebas", pruebaId);
+                actualizar(protocolo);
             }
             case "EVALUACION" -> {
                 permiso(u.revisor()); var entrada = payload.getAsJsonObject("prueba"); var t = db.obtener("pruebas",s(entrada,"id")); var p = db.obtener("protocolos",s(t,"protocoloId"));
@@ -129,11 +172,30 @@ public class ProtocolService {
                 exigir(List.of("APROBADO","OBSERVADO","RECHAZADO").contains(s(entrada,"resultado")) && !s(entrada,"comentario").isBlank(),"Resultado y justificación obligatorios");
                 t.addProperty("resultado",s(entrada,"resultado")); t.addProperty("comentario",s(entrada,"comentario")); db.guardar("pruebas",s(t,"id"),t); actualizar(p);
             }
+            case "MEDICION_AISLACION" -> guardarMedicionAislacion(u, evento, payload);
             case "ESTADO" -> cambiarEstado(u,c,payload);
             case "CIERRE" -> cerrar(u,c,payload);
             default -> exigir(false,"Operación desconocida");
         }
         db.confirmar(evento,u);
+    }
+
+    private void guardarMedicionAislacion(Usuarios.Usuario usuario, JsonObject evento, JsonObject datos) {
+        double lectura1 = d(datos, "lectura1");
+        double lectura10 = d(datos, "lectura10");
+        double indice = lectura10 / lectura1;
+        long fecha = l(datos, "fechaHora");
+        exigir(Double.isFinite(lectura1) && Double.isFinite(lectura10) &&
+            lectura1 > 0 && lectura10 > 0 && Double.isFinite(indice) && fecha > 0, "Lecturas de aislación inválidas");
+        String resultado = lectura1 < 100 || indice < 1 ? "RECHAZADO" : indice < 2 ? "OBSERVADO" : "APROBADO";
+        String id = s(evento, "id");
+        db.guardar("mediciones_aislacion", id, dato("id", id, "usuarioId", usuario.id(), "equipoTag", "TR-01",
+            "instalacion", "Planta Lampa", "lectura1", lectura1, "lectura10", lectura10,
+            "indice", indice, "resultado", resultado, "fechaHora", fecha));
+    }
+    private void quitarMediciones(String pruebaId) {
+        db.todos("mediciones").stream().filter(m -> s(m, "pruebaId").equals(pruebaId))
+            .forEach(m -> db.quitar("mediciones", pruebaId + ":" + s(m, "codigo")));
     }
     private void actualizar(JsonObject p) { p.addProperty("revision",l(p,"revision")+1); db.guardar("protocolos",s(p,"id"),p); }
     private void historial(Usuarios.Usuario u, JsonObject p, JsonObject entrada, String anterior, String motivo) {

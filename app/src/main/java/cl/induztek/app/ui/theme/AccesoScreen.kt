@@ -1,7 +1,5 @@
 package cl.induztek.app.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -20,11 +19,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.induztek.app.model.*
 import cl.induztek.app.ui.components.*
 import cl.induztek.app.viewmodel.AccesoViewModel
+import cl.induztek.app.sync.ConfigSync
+import cl.induztek.app.sync.ServiciosRemotos
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onAcceder: (UsuarioDemo) -> Unit, vm: AccesoViewModel = viewModel()) {
+fun LoginScreen(
+    onAcceder: (UsuarioDemo) -> Unit,
+    onRegistro: (() -> Unit)? = null,
+    onConfigurar: (() -> Unit)? = null,
+    registroEnviado: Boolean = false,
+    vm: AccesoViewModel = viewModel()
+) {
     var mostrarClave by rememberSaveable { mutableStateOf(false) }
-    var mostrarCuentas by rememberSaveable { mutableStateOf(false) }
+    val contexto = LocalContext.current
+    val config = remember(contexto) { ConfigSync(contexto) }
+    val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(12.dp))
@@ -41,29 +51,22 @@ fun LoginScreen(onAcceder: (UsuarioDemo) -> Unit, vm: AccesoViewModel = viewMode
             }
         }
         Text("Acceso a protocolos eléctricos", style = MaterialTheme.typography.headlineSmall)
-        Text("Registra en terreno y consulta el historial de tus equipos, incluso sin conexión.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        CampoInduztek(vm.correo, vm::correo, "Correo electrónico", vm.errores["correo"], Simbolo.CORREO, KeyboardType.Email)
+        if (registroEnviado) AvisoInduztek("Solicitud enviada. Podrás iniciar sesión cuando el jefe técnico active tu cuenta.")
+        CampoInduztek(vm.correo, vm::correo, "Correo electrónico", vm.errores["correo"], Simbolo.CORREO, KeyboardType.Email, enabled = !vm.verificando)
         CampoInduztek(vm.clave, vm::clave, "Contraseña", vm.errores["clave"], Simbolo.CANDADO, KeyboardType.Password,
-            transformacion = if (mostrarClave) VisualTransformation.None else PasswordVisualTransformation(),
+            enabled = !vm.verificando, transformacion = if (mostrarClave) VisualTransformation.None else PasswordVisualTransformation(),
             final = { TextButton(onClick = { mostrarClave = !mostrarClave }) { Text(if (mostrarClave) "Ocultar" else "Ver") } })
         AvisoInduztek(vm.error, error = true)
-        Button(onClick = { vm.ingresar()?.let(onAcceder) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-            Text("Iniciar sesión")
+        Button(enabled = !vm.verificando, onClick = {
+            scope.launch { vm.ingresar { correo, clave -> ServiciosRemotos.autenticar(config, correo, clave) }?.let(onAcceder) }
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            Text(if (vm.verificando) "Verificando acceso…" else "Iniciar sesión")
         }
-        OutlinedButton(onClick = { mostrarCuentas = !mostrarCuentas }, modifier = Modifier.fillMaxWidth()) {
-            Text(if (mostrarCuentas) "Ocultar usuarios" else "Seleccionar usuario")
+        if (onRegistro != null) OutlinedButton(enabled = !vm.verificando, onClick = onRegistro, modifier = Modifier.fillMaxWidth()) {
+            Text("Registrarse")
         }
-        AnimatedVisibility(mostrarCuentas) {
-            Column(Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                UsuariosDemo.todos.filter { it.activo }.forEach { u ->
-                    OutlinedCard(onClick = { vm.elegir(u) }, modifier = Modifier.fillMaxWidth()) {
-                        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            IconoInduztek(Simbolo.PERFIL)
-                            Column { Text(u.nombre, fontWeight = FontWeight.SemiBold); Text(u.rol.titulo(), style = MaterialTheme.typography.bodySmall) }
-                        }
-                    }
-                }
-            }
+        if (onConfigurar != null) TextButton(enabled = !vm.verificando, onClick = onConfigurar, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text("Configurar conexión")
         }
     }
 }

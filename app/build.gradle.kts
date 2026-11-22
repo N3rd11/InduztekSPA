@@ -1,9 +1,14 @@
 plugins {
+    jacoco
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
 
 }
+
+val archivoFirma = providers.environmentVariable("INDUZTEK_KEYSTORE")
+val claveFirma = providers.environmentVariable("INDUZTEK_STORE_PASSWORD")
+val claveAliasFirma = providers.environmentVariable("INDUZTEK_KEY_PASSWORD")
 
 android {
     namespace = "cl.induztek.app"
@@ -19,8 +24,20 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // La suite de la Parcial 2 es offline. La integración remota se solicita aparte.
+        // Las pruebas de acceso autenticado requieren el backend y se ejecutan aparte.
         testInstrumentationRunnerArguments["notAnnotation"] = "cl.induztek.app.RequiereBackend"
+    }
+
+    signingConfigs {
+        if (archivoFirma.isPresent && claveFirma.isPresent && claveAliasFirma.isPresent) {
+            create("entrega") {
+                storeFile = rootProject.file(archivoFirma.get())
+                storeType = "JKS"
+                storePassword = claveFirma.get()
+                keyAlias = "induztek-parcial4"
+                keyPassword = claveAliasFirma.get()
+            }
+        }
     }
 
     buildTypes {
@@ -29,12 +46,21 @@ android {
             // Instrumentación aislada: nunca usa la instalación ni la base de datos de app.
             applicationIdSuffix = ".validacion"
             matchingFallbacks += listOf("debug")
+            enableUnitTestCoverage = true
         }
         release {
             optimization {
                 enable = true
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
+        }
+        create("entrega") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".entrega"
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.findByName("entrega")
+            // La optimización parcial de paquetes rompe el arranque de WorkManager en el APK firmado.
+            optimization { enable = false }
         }
     }
     testBuildType = "validacion"
@@ -48,6 +74,13 @@ android {
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
+tasks.withType<Test>().configureEach {
+    extensions.configure<JacocoTaskExtension> {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
+}
 
 dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.8")

@@ -11,10 +11,15 @@ import java.util.List;
 @Repository
 public class Documentos {
     private final JdbcTemplate jdbc;
+    private final String guardarSql;
     public Documentos(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-        jdbc.execute("CREATE TABLE IF NOT EXISTS documentos (coleccion VARCHAR(50) NOT NULL, id VARCHAR(150) NOT NULL, contenido CLOB NOT NULL, PRIMARY KEY (coleccion,id))");
-        jdbc.execute("CREATE TABLE IF NOT EXISTS eventos (id VARCHAR(150) PRIMARY KEY, usuario VARCHAR(80) NOT NULL, contenido CLOB NOT NULL)");
+        boolean mysql = Esquema.mysql(jdbc);
+        guardarSql = mysql
+            ? "INSERT INTO documentos (coleccion,id,contenido) VALUES (?,?,?) AS nuevo ON DUPLICATE KEY UPDATE contenido=nuevo.contenido"
+            : "MERGE INTO documentos (coleccion,id,contenido) KEY(coleccion,id) VALUES (?,?,?)";
+        jdbc.execute(Esquema.documentos(mysql));
+        jdbc.execute(Esquema.eventos(mysql));
         // Compatibilidad con claves de medición del primer conjunto semilla del MVP.
         var antiguas = jdbc.query("SELECT id,contenido FROM documentos WHERE coleccion='mediciones' AND id LIKE ':%'", (rs,n) -> List.of(rs.getString(1),rs.getString(2)));
         antiguas.forEach(fila -> {
@@ -35,7 +40,7 @@ public class Documentos {
         return o;
     }
     public void guardar(String coleccion, String id, JsonObject contenido) {
-        jdbc.update("MERGE INTO documentos (coleccion,id,contenido) KEY(coleccion,id) VALUES (?,?,?)", coleccion,id,contenido.toString());
+        jdbc.update(guardarSql, coleccion,id,contenido.toString());
     }
     public void quitar(String coleccion, String id) { jdbc.update("DELETE FROM documentos WHERE coleccion=? AND id=?", coleccion,id); }
     public boolean repetido(JsonObject evento, Usuarios.Usuario usuario) {

@@ -24,6 +24,7 @@ interface MvpDao {
     @Query("SELECT * FROM pendientes_sync WHERE usuarioId = :usuarioId ORDER BY fecha, rowid") suspend fun pendientes(usuarioId: String): List<PendienteSyncEntity>
     @Query("DELETE FROM pendientes_sync WHERE id = :id") suspend fun confirmarEnvio(id: String)
     @Query("DELETE FROM mediciones WHERE pruebaId = :id") suspend fun reemplazarMediciones(id: String)
+    @Query("DELETE FROM pruebas WHERE id = :id") suspend fun quitarPrueba(id: String)
     @Upsert suspend fun guardar(valor: ClienteEntity)
     @Upsert suspend fun guardar(valor: InstalacionEntity)
     @Upsert suspend fun guardar(valor: EquipoEntity)

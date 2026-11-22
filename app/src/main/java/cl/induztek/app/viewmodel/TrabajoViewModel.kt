@@ -1,6 +1,7 @@
 package cl.induztek.app.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,10 +18,21 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-class TrabajoViewModel(application: Application, val usuario: UsuarioDemo) : AndroidViewModel(application) {
-    val repo = ProtocolosRepository(InduztekDatabase.obtener(application))
+class TrabajoViewModel(
+    application: Application,
+    val usuario: UsuarioDemo,
+    private val programarSync: (Application, String) -> Unit = ProgramarSync::ejecutar
+) : AndroidViewModel(application) {
     private val mutex = Mutex()
     private val gson = Gson()
+    private val directorio = application.getSharedPreferences("personal-terreno", Context.MODE_PRIVATE)
+    var personal by mutableStateOf(
+        if (usuario.rol == Rol.CLIENTE) emptyList() else runCatching {
+            gson.fromJson(directorio.getString(usuario.id, null), Array<Persona>::class.java)?.toList().orEmpty()
+        }.getOrDefault(emptyList())
+    )
+        private set
+    val repo = ProtocolosRepository(InduztekDatabase.obtener(application)) { personal }
     var estado by mutableStateOf(EstadoLocal())
         private set
     var cargando by mutableStateOf(true)
@@ -38,6 +50,23 @@ class TrabajoViewModel(application: Application, val usuario: UsuarioDemo) : And
         FormularioEstado(inicial + borrador(clave)) { guardarBorrador(clave, it) }
     }
 
+    suspend fun actualizarPersonal() {
+        if (usuario.rol == Rol.CLIENTE || ServiciosRemotos.cuentaEnMemoria(usuario.id) == null) return
+        val config = ConfigSync(getApplication())
+        try {
+            val actualizado = ServiciosRemotos.cuentas(config.acceso, usuario).personal()
+            personal = actualizado
+            directorio.edit().putString(usuario.id, gson.toJson(actualizado)).apply()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Se puede seguir usando el último directorio descargado durante un corte.
+        }
+    }
+
+    fun nombrePersonal(id: String): String =
+        personal.firstOrNull { it.id == id }?.nombre ?: UsuariosDemo.todos.firstOrNull { it.id == id }?.nombre ?: id
+
     init {
         viewModelScope.launch {
             try {
@@ -48,7 +77,7 @@ class TrabajoViewModel(application: Application, val usuario: UsuarioDemo) : And
                 }
                 estado = filtrar(repo.cargar())
                 cargando = false
-                ProgramarSync.ejecutar(application, usuario.id)
+                programarSync(application, usuario.id)
                 repo.cambios.collect { estado = filtrar(it) }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -132,7 +161,7 @@ class TrabajoViewModel(application: Application, val usuario: UsuarioDemo) : And
             try {
                 mutex.withLock { repo.bloque(); estado = filtrar(repo.cargar()) }
                 mensaje = confirmacion
-                ProgramarSync.ejecutar(getApplication(), usuario.id)
+                programarSync(getApplication(), usuario.id)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 error = e.message ?: "No se pudo completar la operación"

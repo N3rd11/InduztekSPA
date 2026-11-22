@@ -6,10 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import cl.induztek.app.model.UsuarioDemo
-import cl.induztek.app.model.UsuariosDemo
+import cl.induztek.app.sync.ServiciosRemotos
 
 class SesionViewModel(private val savedState: SavedStateHandle) : ViewModel() {
-    var usuario by mutableStateOf(UsuariosDemo.todos.find { it.id == savedState.get<String>("usuario") && it.activo })
+    var usuario by mutableStateOf(ServiciosRemotos.cuentaEnMemoria(savedState.get<String>("usuario")))
         private set
 
     fun acceder(valor: UsuarioDemo) {
@@ -19,6 +19,7 @@ class SesionViewModel(private val savedState: SavedStateHandle) : ViewModel() {
     }
 
     fun cerrar() {
+        usuario?.let { ServiciosRemotos.cerrarSesion(it.id) }
         usuario = null
         savedState["usuario"] = null
     }

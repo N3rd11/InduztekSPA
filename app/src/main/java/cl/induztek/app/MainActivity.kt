@@ -17,7 +17,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.animateContentSize
 import cl.induztek.app.ui.components.*
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 import cl.induztek.app.viewmodel.RegistroViewModel
 import cl.induztek.app.ui.InduztekApp
@@ -42,7 +41,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun RegistroScreen(
-    vm: RegistroViewModel = viewModel()
+    vm: RegistroViewModel
 ) {
 
     Column(

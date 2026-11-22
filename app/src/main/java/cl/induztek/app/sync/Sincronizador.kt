@@ -31,7 +31,9 @@ class Sincronizador(private val db: InduztekDatabase, private val catalogo: Sync
         val dao = db.mvpDao()
         val pendientes = dao.todosPendientes()
         val ids = pendientes.map { it.entidadId }.toSet()
-        val protocolosPendientes = pendientes.filter { it.tipo in setOf("PROTOCOLO", "DATOS_PROTOCOLO", "PRUEBA", "EVALUACION", "ESTADO") }.map { it.entidadId }.toSet()
+        val protocolosPendientes = pendientes.filter {
+            it.tipo in setOf("PROTOCOLO", "DATOS_PROTOCOLO", "PRUEBA", "ELIMINAR_PRUEBA", "EVALUACION", "ESTADO")
+        }.map { it.entidadId }.toSet()
         remoto.clientes.filter { it.id !in ids }.forEach { dao.guardar(it) }
         remoto.instalaciones.filter { it.id !in ids }.forEach { dao.guardar(it) }
         remoto.equipos.filter { it.id !in ids }.forEach { dao.guardar(it) }
@@ -44,8 +46,12 @@ class Sincronizador(private val db: InduztekDatabase, private val catalogo: Sync
         adoptados.forEach { dao.guardar(it) }
         val idsAdoptados = adoptados.map { it.id }.toSet()
         val pruebas = remoto.pruebas.filter { it.protocoloId in idsAdoptados }
-        pruebas.forEach { dao.guardar(it); dao.reemplazarMediciones(it.id) }
         val idsPruebas = pruebas.map { it.id }.toSet()
+        dao.pruebas().filter { it.protocoloId in idsAdoptados && it.id !in idsPruebas }.forEach {
+            dao.reemplazarMediciones(it.id)
+            dao.quitarPrueba(it.id)
+        }
+        pruebas.forEach { dao.guardar(it); dao.reemplazarMediciones(it.id) }
         remoto.mediciones.filter { it.pruebaId in idsPruebas }.forEach { dao.guardar(it) }
         remoto.historial.filter { it.protocoloId in idsAdoptados }.forEach { dao.guardar(it) }
     }

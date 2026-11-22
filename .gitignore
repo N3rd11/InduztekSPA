@@ -15,3 +15,5 @@
 .cxx
 local.properties
 /referencias_profe/
+*.jks
+*.keystore

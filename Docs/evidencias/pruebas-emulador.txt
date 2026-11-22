@@ -1,0 +1,8 @@
+
+cl.induztek.app.AccesoNavigationTest:..........
+cl.induztek.app.ExampleInstrumentedTest:.
+cl.induztek.app.RetrofitIntegrationTest:.
+
+Time: 70.303
+
+OK (12 tests)

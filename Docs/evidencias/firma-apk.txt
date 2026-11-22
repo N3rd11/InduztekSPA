@@ -1,0 +1,21 @@
+﻿Archivo de entrega: Docs/entrega/InduztekSPA-Parcial4.apk
+SHA-256 del APK: A9EB978ED8D3BE508DA2E7517F39CF0AFC8DAED8A71A296897A1D2549E40BD15
+Almacen local de firma: %LOCALAPPDATA%\InduztekSPA\FirmaParcial4\induztek-parcial4.jks
+
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=InduztekSPA Parcial 4, O=Entrega academica, C=CL
+Signer #1 certificate SHA-256 digest: d8aa45e07b56c039cfab8c6500d2980665214ce5892ab05ad7b1ff6290efb75b
+Signer #1 certificate SHA-1 digest: 295003bb876f5110eb25f711831d38adff992096
+Signer #1 certificate MD5 digest: ed3c6eb41ddc2ccbd29894c7dee46347
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 2048
+Signer #1 public key SHA-256 digest: b1260e36bd358524c075f4378d9215dc679470df9e094f71fe000c3f47a1c4f2
+Signer #1 public key SHA-1 digest: 139c21e497a3573f97b171c5170196bd557a7c60
+Signer #1 public key MD5 digest: 7876f71f7c0af36a9df5d282022c312c

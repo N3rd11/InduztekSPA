@@ -14,6 +14,9 @@ subprojects {
         "implementation"("org.springframework.boot:spring-boot-starter-jdbc")
         "implementation"("com.google.code.gson:gson:2.13.2")
         "runtimeOnly"("com.h2database:h2")
+        if (name != "report-service") {
+            "runtimeOnly"("com.mysql:mysql-connector-j")
+        }
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testImplementation"("org.springframework.security:spring-security-test")
         "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")

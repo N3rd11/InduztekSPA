@@ -1,14 +1,18 @@
 package cl.induztek.app.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
@@ -20,12 +24,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import cl.induztek.app.RegistroScreen
 import cl.induztek.app.model.Permisos
 import cl.induztek.app.model.Rol
 import cl.induztek.app.navigation.Destinos
 import cl.induztek.app.ui.components.*
 import cl.induztek.app.viewmodel.*
+import cl.induztek.app.data.CuentasRepository
+import cl.induztek.app.sync.ConfigSync
+import cl.induztek.app.sync.ServiciosRemotos
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,20 +42,45 @@ fun InduztekApp(sesion: SesionViewModel = viewModel()) {
     val accesos = recordarAccesosMultimedia()
     val usuario = sesion.usuario
     // Una sesión nueva recibe una pila nueva: Atrás nunca regresa a otro perfil.
-    key(usuario?.id) {
+    key(usuario?.id, usuario?.rol, usuario?.clienteId) {
+        var registroEnviado by rememberSaveable { mutableStateOf(false) }
         val nav = rememberNavController()
         val entrada by nav.currentBackStackEntryAsState()
         val ruta = entrada?.destination?.route ?: if (usuario == null) Destinos.ACCESO else Destinos.INICIO
         val app = LocalContext.current.applicationContext as Application
-        val trabajo: TrabajoViewModel? = if (usuario != null) viewModel(key = "trabajo-${usuario.id}", factory = object : ViewModelProvider.Factory {
+        val trabajo: TrabajoViewModel? = if (usuario != null) viewModel(key = "trabajo-${usuario.id}-${usuario.rol}-${usuario.clienteId}", factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>) = TrabajoViewModel(app, usuario) as T
         }) else null
         val perfil: PerfilViewModel? = if (usuario != null) viewModel(key = "perfil-${usuario.id}", factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST") override fun <T : ViewModel> create(modelClass: Class<T>) = PerfilViewModel(app, usuario.id) as T
         }) else null
-        val titulos = mapOf(Destinos.INICIO to "Induztek · Terreno", Destinos.PERFIL to "Mi perfil", Destinos.VISITAS to "Visitas y actas",
-            Destinos.HISTORIAL to "Protocolos e historial", Destinos.CATALOGOS to "Catálogos", Destinos.REGISTRO to "Mediciones anteriores", Destinos.SINCRONIZACION to "Conexión opcional")
+        val portal: PortalClienteViewModel? = if (usuario?.rol == Rol.CLIENTE) viewModel(
+            key = "portal-${usuario.id}-${usuario.clienteId}",
+            factory = object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>) = PortalClienteViewModel(app, usuario) as T
+            }
+        ) else null
+        LaunchedEffect(portal) { portal?.actualizar() }
+        val titulos = mapOf(Destinos.INICIO to if (portal != null) "Portal de clientes" else "Induztek · Terreno",
+            Destinos.PERFIL to "Mi perfil", Destinos.VISITAS to if (portal != null) "Trabajos" else "Visitas y actas",
+            Destinos.HISTORIAL to "Protocolos e historial", Destinos.CATALOGOS to if (portal != null) "Mis equipos" else "Catálogos",
+            Destinos.TRABAJO_CLIENTE + "/{id}" to "Detalle del trabajo",
+            Destinos.ACTA_CLIENTE + "/{id}" to "Acta de terreno", Destinos.REGISTRO to "Mediciones anteriores",
+            Destinos.SINCRONIZACION to "Sincronización", Destinos.CUENTAS to "Administración de cuentas",
+            Destinos.CAMBIAR_CUENTA to "Cambiar cuenta", Destinos.AGREGAR_CUENTA to "Agregar otra cuenta")
+        val secciones = if (portal != null) listOf(
+            Triple(Destinos.INICIO, "Inicio", Simbolo.INICIO),
+            Triple(Destinos.VISITAS, "Trabajos", Simbolo.VISITA),
+            Triple(Destinos.CATALOGOS, "Mis equipos", Simbolo.CATALOGO)
+        ) else listOf(
+            Triple(Destinos.INICIO, "Inicio", Simbolo.INICIO),
+            Triple(Destinos.VISITAS, "Visitas", Simbolo.VISITA),
+            Triple(Destinos.HISTORIAL, if (usuario?.rol == Rol.INGENIERO) "Revisión" else "Historial", Simbolo.HISTORIAL),
+            Triple(Destinos.CATALOGOS, "Catálogos", Simbolo.CATALOGO)
+        ) + if (usuario?.rol == Rol.JEFE_TECNICO) listOf(Triple(Destinos.CUENTAS, "Cuentas", Simbolo.PERFIL)) else emptyList()
         fun ir(destino: String) { nav.navigate(destino) { launchSingleTop = true } }
+        fun abrirTrabajoCliente(id: String) = ir("${Destinos.TRABAJO_CLIENTE}/${Uri.encode(id)}")
         Scaffold(
             topBar = {
                 if (usuario != null) TopAppBar(title = { Text(titulos[ruta] ?: "Induztek") }, navigationIcon = {
@@ -63,9 +97,8 @@ fun InduztekApp(sesion: SesionViewModel = viewModel()) {
                 })
             },
             bottomBar = {
-                if (usuario != null && ruta in listOf(Destinos.INICIO, Destinos.VISITAS, Destinos.HISTORIAL, Destinos.CATALOGOS, Destinos.PERFIL)) NavigationBar {
-                    listOf(Triple(Destinos.INICIO,"Inicio",Simbolo.INICIO), Triple(Destinos.VISITAS,"Visitas",Simbolo.VISITA),
-                        Triple(Destinos.HISTORIAL,"Historial",Simbolo.HISTORIAL), Triple(Destinos.CATALOGOS,"Catálogos",Simbolo.CATALOGO)).forEach { (destino,titulo,icono) ->
+                if (usuario != null && (ruta == Destinos.PERFIL || secciones.any { it.first == ruta })) NavigationBar {
+                    secciones.forEach { (destino,titulo,icono) ->
                         NavigationBarItem(selected = ruta == destino, onClick = {
                             nav.navigate(destino) { popUpTo(Destinos.INICIO) { saveState = true }; launchSingleTop = true; restoreState = true }
                         }, icon = { IconoInduztek(icono) }, label = { Text(titulo) })
@@ -77,29 +110,118 @@ fun InduztekApp(sesion: SesionViewModel = viewModel()) {
                 modifier = Modifier.fillMaxSize().padding(padding).imePadding(),
                 enterTransition = { fadeIn(tween(180)) + slideInHorizontally(tween(180)) { it / 12 } },
                 exitTransition = { fadeOut(tween(120)) }, popEnterTransition = { fadeIn(tween(180)) }, popExitTransition = { fadeOut(tween(120)) }) {
-                composable(Destinos.ACCESO) { LoginScreen(onAcceder = sesion::acceder) }
+                composable(Destinos.ACCESO) {
+                    LoginScreen(sesion::acceder, { ir(Destinos.REGISTRO_CUENTA) }, { ir(Destinos.CONEXION) }, registroEnviado)
+                }
+                if (usuario == null) {
+                    composable(Destinos.REGISTRO_CUENTA) {
+                        RegistroCuentaScreen({ nav.popBackStack() }) {
+                            registroEnviado = true
+                            nav.popBackStack()
+                        }
+                    }
+                    composable(Destinos.CONEXION) { ConfiguracionConexionScreen { nav.popBackStack() } }
+                }
                 if (usuario != null && trabajo != null && perfil != null) {
                     composable(Destinos.INICIO) {
+                        if (portal != null) {
+                            PantallaCliente(portal, Destinos.INICIO, ::abrirTrabajoCliente,
+                                verTrabajos = { ir(Destinos.VISITAS) }, verEquipos = { ir(Destinos.CATALOGOS) },
+                                cambiarCuenta = { ir(Destinos.CAMBIAR_CUENTA) },
+                                verSincronizacion = { ir(Destinos.SINCRONIZACION) }, cerrarSesion = sesion::cerrar)
+                            return@composable
+                        }
+                        LaunchedEffect(trabajo) { trabajo.actualizarPersonal() }
                         InicioScreen(usuario, { ir(Destinos.REGISTRO) }, sesion::cerrar) {
                             val s = trabajo.estado
+                            Text(when (usuario.rol) {
+                                Rol.TECNICO -> "Trabajo en terreno"
+                                Rol.INGENIERO -> "Revisión de protocolos"
+                                Rol.JEFE_TECNICO -> "Supervisión y administración"
+                                Rol.CLIENTE -> "Documentos de mi empresa"
+                            }, style = MaterialTheme.typography.titleMedium)
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 ResumenPanel("${s.visitas.count { it.cierre == null }}", "Visitas abiertas", Modifier.weight(1f))
-                                ResumenPanel("${s.protocolos.count { it.estado !in setOf("FORMALIZADO", "ANULADO") }}", "Pendientes", Modifier.weight(1f))
+                                val protocolos = when (usuario.rol) {
+                                    Rol.TECNICO -> s.protocolos.count { it.autorId == usuario.id && it.estado in setOf("BORRADOR", "OBSERVADO") } to "Mis borradores y observados"
+                                    Rol.INGENIERO -> s.protocolos.count { it.estado == "REGISTRADO_TERRENO" } to "Para revisar"
+                                    Rol.JEFE_TECNICO -> s.protocolos.count { it.estado !in setOf("FORMALIZADO", "ANULADO") } to "Pendientes"
+                                    Rol.CLIENTE -> s.visitas.count { it.cierre != null } to "Actas de mi empresa"
+                                }
+                                ResumenPanel(protocolos.first.toString(), protocolos.second, Modifier.weight(1f))
                             }
                             if (trabajo.cargando) LinearProgressIndicator(Modifier.fillMaxWidth())
                             AvisoInduztek(trabajo.error, error = true)
-                            AccesoPanel("Visitas y actas de terreno", if (usuario.rol == Rol.CLIENTE) "Respaldos recibidos de tu empresa" else "Registra el trabajo y entrega el acta", Simbolo.VISITA) { ir(Destinos.VISITAS) }
+                            AccesoPanel("Visitas y actas de terreno", "Registra el trabajo y entrega el acta", Simbolo.VISITA) { ir(Destinos.VISITAS) }
                             AccesoPanel("Protocolos e historial por equipo", if (Permisos.revisar(usuario)) "Revisa, compara y formaliza" else "Estados y evolución de mediciones", Simbolo.HISTORIAL) { ir(Destinos.HISTORIAL) }
                             AccesoPanel("Clientes, equipos e instrumentos", if (Permisos.instrumentos(usuario)) "Administra catálogos y calibraciones" else "Instalaciones y equipos identificados", Simbolo.CATALOGO) { ir(Destinos.CATALOGOS) }
+                            if (usuario.rol == Rol.JEFE_TECNICO) {
+                                AccesoPanel("Administrar cuentas", "Solicitudes, roles y acceso", Simbolo.PERFIL) { ir(Destinos.CUENTAS) }
+                            }
+                            TextButton(onClick = { ir(Destinos.CAMBIAR_CUENTA) }) { Text("Cambiar cuenta") }
                             TextButton(onClick = { ir(Destinos.SINCRONIZACION) }) { Text("Sincronización y conexión") }
                         }
                     }
                     composable(Destinos.PERFIL) { PerfilScreen(usuario, perfil, accesos) }
-                    listOf(Destinos.VISITAS,Destinos.CATALOGOS,Destinos.HISTORIAL).forEach { seccion ->
-                        composable(seccion) { PantallaTrabajo(trabajo, seccion) }
+                    composable(Destinos.CAMBIAR_CUENTA) {
+                        CambiarCuentaScreen(usuario, ConfigSync(app), { ir(Destinos.AGREGAR_CUENTA) }, sesion::acceder)
                     }
-                    composable(Destinos.REGISTRO) { if (Permisos.registrar(usuario)) RegistroScreen() else Text("Acceso de solo consulta") }
+                    composable(Destinos.AGREGAR_CUENTA) {
+                        LoginScreen(onAcceder = {
+                            if (it == usuario) nav.popBackStack()
+                            else sesion.acceder(it)
+                        })
+                    }
+                    if (portal != null) {
+                        listOf(Destinos.VISITAS, Destinos.CATALOGOS).forEach { seccion ->
+                            composable(seccion) { PantallaCliente(portal, seccion, ::abrirTrabajoCliente) }
+                        }
+                        val idTrabajo = listOf(navArgument("id") { type = NavType.StringType })
+                        composable("${Destinos.TRABAJO_CLIENTE}/{id}", arguments = idTrabajo) { entradaTrabajo ->
+                            val id = entradaTrabajo.arguments?.getString("id")
+                            val detalle = portal.datos?.trabajos?.find { it.visita.id == id }
+                            DetalleTrabajoCliente(detalle) {
+                                detalle?.let { ir("${Destinos.ACTA_CLIENTE}/${Uri.encode(it.visita.id)}") }
+                            }
+                        }
+                        composable("${Destinos.ACTA_CLIENTE}/{id}", arguments = idTrabajo) { entradaActa ->
+                            val id = entradaActa.arguments?.getString("id")
+                            val trabajoCliente = portal.datos?.trabajos?.find { it.visita.id == id && it.tieneActa }
+                            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (trabajoCliente == null) Text("El acta ya no está disponible.")
+                                else ActaScreen(trabajoCliente.visita, usuario)
+                            }
+                        }
+                    } else {
+                        listOf(Destinos.VISITAS, Destinos.CATALOGOS, Destinos.HISTORIAL).forEach { seccion ->
+                            composable(seccion) { PantallaTrabajo(trabajo, seccion) }
+                        }
+                    }
+                    composable(Destinos.REGISTRO) {
+                        if (Permisos.registrar(usuario)) {
+                            val registro: RegistroViewModel = viewModel(
+                                key = "registro-${usuario.id}",
+                                factory = object : ViewModelProvider.Factory {
+                                    @Suppress("UNCHECKED_CAST")
+                                    override fun <T : ViewModel> create(modelClass: Class<T>) =
+                                        RegistroViewModel(app, usuario.id) as T
+                                }
+                            )
+                            RegistroScreen(registro)
+                        } else Text("Acceso de solo consulta")
+                    }
                     composable(Destinos.SINCRONIZACION) { SincronizacionScreen(trabajo) }
+                    if (usuario.rol == Rol.JEFE_TECNICO) {
+                        composable(Destinos.CUENTAS) {
+                            val cuentas: CuentasViewModel = viewModel(factory = object : ViewModelProvider.Factory {
+                                @Suppress("UNCHECKED_CAST")
+                                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                                    CuentasViewModel(CuentasRepository(ServiciosRemotos.cuentas(ConfigSync(app).acceso, usuario))) as T
+                            })
+                            CuentasScreen(cuentas, trabajo.estado.clientes, usuario.id)
+                        }
+                    }
                 }
             }
         }

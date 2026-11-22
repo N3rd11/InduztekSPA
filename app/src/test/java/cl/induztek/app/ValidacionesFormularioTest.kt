@@ -10,12 +10,15 @@ class ValidacionesFormularioTest {
         assertEquals(setOf("correo", "clave"), V.login("", "").keys)
         assertTrue(V.login("mgodoy@induztek.ejemplo", "1234").isEmpty())
         assertTrue(V.login("correo incorrecto", "1234").containsKey("correo"))
+        assertTrue(V.login("nombre@empresa..cl", "1234").containsKey("correo"))
+        assertTrue(V.login("nombre@empresa.cl", "ñ".repeat(37)).containsKey("clave"))
     }
     @Test fun rutYContactoSeValidanAunqueSeanOpcionales() {
         assertNull(V.campo("rut", "76.482.915-8"))
         assertNotNull(V.campo("rut", "76.482.915-9"))
         assertNotNull(V.campo("correo", "ana@"))
         assertNotNull(V.campo("telefono", "abcdefghi"))
+        assertNotNull(V.campo("telefono", "+()- - -"))
         assertNull(V.campo("telefono", "+56 9 0000 0101"))
         assertNull(V.campo("correo", ""))
     }

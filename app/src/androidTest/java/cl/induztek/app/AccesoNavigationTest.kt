@@ -8,6 +8,7 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
 import android.content.ContentValues
+import android.content.Context
 import androidx.test.espresso.Espresso
 import org.hamcrest.Matchers.anyOf
 import android.graphics.Bitmap
@@ -30,14 +31,21 @@ class AccesoNavigationTest {
     )
     @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
-    private fun entrar(correo: String) {
+    private fun entrar(correo: String, clave: String = "1234") {
         compose.onNodeWithText("Correo electrónico").performTextInput(correo)
-        compose.onNodeWithText("Contraseña", substring = false).performTextInput("1234")
+        compose.onNodeWithText("Contraseña", substring = false).performTextInput(clave)
         compose.onNodeWithText("Iniciar sesión").performScrollTo().performClick()
-        compose.waitUntil(15_000) { compose.onAllNodesWithText("Panel principal").fetchSemanticsNodes().isNotEmpty() }
+        try {
+            compose.waitUntil(15_000) {
+                compose.onAllNodes(hasText("Panel principal") or hasText("Documentos de mi empresa"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError("No abrió el panel para $correo\n${compose.onRoot().printToString()}", e)
+        }
     }
 
-    @Test fun tecnicoAccedeACamaraYVisitas() {
+    @Test @RequiereBackend fun tecnicoAccedeACamaraYVisitas() {
         entrar("mgodoy@induztek.ejemplo")
         compose.onNodeWithContentDescription("Mi perfil").performClick()
         compose.onNodeWithText("Tomar foto de perfil").assertExists()
@@ -48,16 +56,44 @@ class AccesoNavigationTest {
         compose.onNodeWithText("Crear visita").assertIsDisplayed()
     }
 
-    @Test fun clienteSoloVeEquiposDeSuEmpresa() {
+    @Test @RequiereBackend fun clienteSoloVeEquiposDeSuEmpresa() {
         entrar("mfuentes@envpacifico.ejemplo")
-        compose.onNodeWithText("Clientes, equipos e instrumentos").performScrollTo().performClick()
-        compose.waitUntil(15_000) { compose.onAllNodesWithText("Catálogos").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Mis equipos").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("TR-01").fetchSemanticsNodes().isNotEmpty() }
         compose.onAllNodes(hasText("TR-01", substring = true)).assertCountEquals(1)
         compose.onAllNodes(hasText("CEL-MT-03", substring = true)).assertCountEquals(0)
         compose.onNodeWithText("Agregar Equipo").assertDoesNotExist()
     }
 
-    @Test fun resultadoDeCamaraSeGuardaEnLaRutaDePerfilExistente() {
+    @Test @RequiereBackend fun jefeCreaCuentaYClienteEntraConSuPropiaClave() {
+        val sufijo = System.nanoTime().toString().takeLast(7)
+        val cuerpo = "3$sufijo"
+        val suma = cuerpo.reversed().mapIndexed { i, c -> c.digitToInt() * (2 + i % 6) }.sum()
+        val dv = when (val valor = 11 - suma % 11) { 11 -> "0"; 10 -> "K"; else -> valor.toString() }
+        val correo = "cliente.$sufijo@induztek.ejemplo"
+        val clave = "DemoAlta-$sufijo"
+        entrar("respinoza@induztek.ejemplo")
+        compose.onNodeWithText("Administrar cuentas").performScrollTo().performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Seleccionar empresa").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Nombre", substring = false).performTextInput("Cuenta ficticia $sufijo")
+        compose.onNodeWithText("Correo", substring = false).performTextInput(correo)
+        compose.onNodeWithText("RUT", substring = false).performTextInput("$cuerpo-$dv")
+        compose.onNodeWithText("Contraseña", substring = false).performTextInput(clave)
+        Espresso.closeSoftKeyboard()
+        compose.onNodeWithText("Seleccionar empresa").performClick()
+        compose.onNode(hasText("Envasadora del Pacífico S.A.") and hasClickAction()).performClick()
+        compose.onNodeWithText("Crear cuenta cliente").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Cuenta cliente creada.").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("Volver").performClick()
+        compose.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
+        entrar(correo, clave)
+        compose.onNodeWithText("Administrar cuentas").assertDoesNotExist()
+        compose.onNodeWithText("Mis equipos").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodes(hasText("TR-01", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodes(hasText("CEL-MT-03", substring = true)).assertCountEquals(0)
+    }
+
+    @Test @RequiereBackend fun resultadoDeCamaraSeGuardaEnLaRutaDePerfilExistente() {
         val contextoAnterior = InstrumentationRegistry.getInstrumentation().targetContext
         val archivoAnterior = File(contextoAnterior.filesDir, "foto_tecnico1.jpg")
         val copiaAnterior = archivoAnterior.takeIf { it.exists() }?.readBytes()
@@ -88,6 +124,7 @@ class AccesoNavigationTest {
         } finally { Intents.release(); if (copiaAnterior != null) archivoAnterior.writeBytes(copiaAnterior) }
     }
     @Test fun loginMuestraValidacionesPorCampo() {
+        compose.onNodeWithText("Seleccionar usuario").assertDoesNotExist()
         compose.onNodeWithText("Iniciar sesión").performScrollTo().performClick()
         compose.onNodeWithText("Ingresa tu correo").assertExists()
         compose.onNodeWithText("Ingresa tu contraseña").assertExists()
@@ -97,17 +134,124 @@ class AccesoNavigationTest {
         compose.onNodeWithText("Ingresa un correo válido").assertExists()
     }
 
-    @Test fun losCuatroRolesInicianSesionConPanelYLogout() {
+    @Test fun sePuedeAbrirElRegistroYValidarAntesDeEnviar() {
+        compose.onNodeWithText("Registrarse").performScrollTo().performClick()
+        compose.onNodeWithText("Registro de cliente").assertIsDisplayed()
+        compose.onNodeWithText("Enviar solicitud").performScrollTo().performClick()
+        compose.onAllNodesWithText("Campo obligatorio").assertCountEquals(3)
+        compose.onNodeWithText("Volver al inicio de sesión").performScrollTo().performClick()
+        compose.onNodeWithText("Iniciar sesión").assertExists()
+    }
+
+    @Test fun noAbreSesionCuandoUsuariosNoResponde() {
+        val prefs = InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("sincronizacion", Context.MODE_PRIVATE)
+        val acceso = prefs.getString("acceso", null)
+        check(prefs.edit().putString("acceso", "http://127.0.0.1:1/").commit())
+        try {
+            compose.onNodeWithText("Correo electrónico").performTextInput("mgodoy@induztek.ejemplo")
+            compose.onNodeWithText("Contraseña").performTextInput("1234")
+            compose.onNodeWithText("Iniciar sesión").performScrollTo().performClick()
+            compose.waitUntil(15_000) {
+                compose.onAllNodesWithText("Conéctate al servidor para iniciar sesión.").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("Panel principal").assertDoesNotExist()
+        } finally {
+            check(prefs.edit().putString("acceso", acceso).commit())
+        }
+    }
+
+    @Test @RequiereBackend fun clienteSolicitaCuentaYEntraTrasAprobacionDelJefe() {
+        val sufijo = System.nanoTime().toString().takeLast(7)
+        val cuerpo = "4$sufijo"
+        val suma = cuerpo.reversed().mapIndexed { i, c -> c.digitToInt() * (2 + i % 6) }.sum()
+        val dv = when (val valor = 11 - suma % 11) { 11 -> "0"; 10 -> "K"; else -> valor.toString() }
+        val correo = "solicitud.$sufijo@induztek.ejemplo"
+        val clave = "Solicitud-$sufijo"
+        compose.onNodeWithText("Registrarse").performScrollTo().performClick()
+        compose.onNodeWithText("Nombre completo").performTextInput("Solicitud $sufijo")
+        compose.onNodeWithText("Correo electrónico").performTextInput(correo)
+        compose.onNodeWithText("RUT").performTextInput("$cuerpo-$dv")
+        compose.onNodeWithText("Contraseña").performTextInput(clave)
+        compose.onNodeWithText("Repite la contraseña").performTextInput(clave)
+        Espresso.closeSoftKeyboard()
+        compose.onNodeWithText("Enviar solicitud").performScrollTo().performClick()
+        try {
+            compose.waitUntil(15_000) {
+                compose.onAllNodesWithText("Solicitud enviada", substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError(compose.onRoot().printToString(), e)
+        }
+        compose.onNodeWithText("Correo electrónico").performTextInput(correo)
+        compose.onNodeWithText("Contraseña").performTextInput(clave)
+        compose.onNodeWithText("Iniciar sesión").performScrollTo().performClick()
+        compose.waitUntil(15_000) {
+            compose.onAllNodesWithText("Correo o contraseña incorrectos.").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Panel principal").assertDoesNotExist()
+        compose.onNodeWithText("Correo electrónico").performTextClearance()
+        compose.onNodeWithText("Contraseña").performTextClearance()
+        entrar("respinoza@induztek.ejemplo")
+        compose.onNodeWithText("Administrar cuentas").performScrollTo().performClick()
+        compose.waitUntil(15_000) {
+            compose.onAllNodes(hasText("Actualizar lista") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        val cuenta = hasTestTag("cuenta-cliente") and hasAnyDescendant(hasText(correo))
+        compose.onNodeWithTag("lista-cuentas").performScrollToNode(cuenta)
+        compose.onNode(hasText("Seleccionar empresa") and hasAnyAncestor(cuenta)).performScrollTo().performClick()
+        compose.onNode(hasText("Envasadora del Pacífico S.A.") and hasClickAction()).performClick()
+        compose.onNode(hasText("Aprobar y activar") and hasAnyAncestor(cuenta)).performScrollTo().performClick()
+        compose.waitUntil(15_000) {
+            compose.onAllNodes(hasText("Solicitud $sufijo · Activa")).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithContentDescription("Volver").performClick()
+        compose.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
+        entrar(correo, clave)
+        compose.onNodeWithText("Administrar cuentas").assertDoesNotExist()
+    }
+
+    @Test @RequiereBackend fun losCuatroRolesInicianSesionConPanelYLogout() {
         for (correo in listOf("mgodoy@induztek.ejemplo", "acontreras@induztek.ejemplo", "respinoza@induztek.ejemplo", "mfuentes@envpacifico.ejemplo")) {
             entrar(correo)
-            compose.onNodeWithText("Visitas y actas de terreno").assertExists()
-            compose.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
+            if (correo == "mfuentes@envpacifico.ejemplo") {
+                compose.onNodeWithText("Documentos de mi empresa").assertExists()
+                compose.onNodeWithTag("portal-cliente-lista").performScrollToNode(hasText("Cerrar sesión"))
+                compose.onNodeWithText("Cerrar sesión").performClick()
+            } else {
+                compose.onNodeWithText("Visitas y actas de terreno").assertExists()
+                compose.onNodeWithText("Cerrar sesión").performScrollTo().performClick()
+            }
             compose.waitUntil(10_000) { compose.onAllNodesWithText("Iniciar sesión").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Panel principal").assertDoesNotExist()
         }
     }
 
-    @Test fun navegacionInternaConservaElBorradorAlVolver() {
+    @Test @RequiereBackend fun sePuedeCambiarEntreCuatroCuentasAutenticadas() {
+        cl.induztek.app.sync.ServiciosRemotos.cerrarTodas()
+        entrar("respinoza@induztek.ejemplo")
+        compose.onNodeWithText("Supervisión y administración").assertExists()
+        val perfiles = listOf(
+            "mgodoy@induztek.ejemplo" to "Trabajo en terreno",
+            "acontreras@induztek.ejemplo" to "Revisión de protocolos",
+            "mfuentes@envpacifico.ejemplo" to "Documentos de mi empresa"
+        )
+        for ((correo, panel) in perfiles) {
+            compose.onNodeWithText("Cambiar cuenta").performScrollTo().performClick()
+            compose.onNodeWithText("Agregar otra cuenta").performScrollTo().performClick()
+            entrar(correo)
+            compose.onNodeWithText(panel).assertExists()
+            compose.onNodeWithText("Administrar cuentas").assertDoesNotExist()
+        }
+        compose.onNodeWithTag("portal-cliente-lista").performScrollToNode(hasText("Cambiar cuenta"))
+        compose.onNodeWithText("Cambiar cuenta").performClick()
+        compose.onNodeWithText("Ricardo Espinoza Lagos").performScrollTo().performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Supervisión y administración").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Administrar cuentas").assertExists()
+        cl.induztek.app.sync.ServiciosRemotos.cerrarTodas()
+    }
+
+    @Test @RequiereBackend fun navegacionInternaConservaElBorradorAlVolver() {
         entrar("mgodoy@induztek.ejemplo")
         compose.onNodeWithText("Visitas y actas de terreno").performScrollTo().performClick()
         compose.waitUntil(15_000) { compose.onAllNodesWithText("Crear visita").fetchSemanticsNodes().isNotEmpty() }
@@ -123,7 +267,7 @@ class AccesoNavigationTest {
         compose.onNodeWithText("OT-BORRADOR-EP2").assertExists()
     }
 
-    @Test fun galeriaGuardaImagenYLaRecuperaTrasRecrearActividad() {
+    @Test @RequiereBackend fun galeriaGuardaImagenYLaRecuperaTrasRecrearActividad() {
         val contexto = InstrumentationRegistry.getInstrumentation().targetContext
         val archivo = File(contexto.filesDir, "foto_tecnico2.jpg")
         val anterior = archivo.takeIf { it.exists() }?.readBytes()
@@ -158,7 +302,7 @@ class AccesoNavigationTest {
         }
     }
 
-    @Test fun cancelarGaleriaConservaLaFotoAnterior() {
+    @Test @RequiereBackend fun cancelarGaleriaConservaLaFotoAnterior() {
         val contexto = InstrumentationRegistry.getInstrumentation().targetContext
         val archivo = File(contexto.filesDir, "foto_tecnico3.jpg")
         val anterior = archivo.takeIf { it.exists() }?.readBytes()
@@ -176,7 +320,7 @@ class AccesoNavigationTest {
         } finally { Intents.release(); if (anterior != null) archivo.writeBytes(anterior) }
     }
 
-    @Test fun recorridoOfflineCompletoDesdeVisitaHastaActa() {
+    @Test @RequiereBackend fun recorridoCompletoDesdeVisitaHastaActa() {
         fun pulsar(texto: String) = compose.onNodeWithText(texto).performScrollTo().performClick()
         fun escribir(campo: String, valor: String) { compose.onNodeWithText(campo).performScrollTo().performTextReplacement(valor) }
         fun seleccionar(titulo: String, opcion: String) {
@@ -190,19 +334,36 @@ class AccesoNavigationTest {
         seleccionar("Instalación *:", "Planta Molienda")
         seleccionar("Ingeniero a cargo *:", "Andrea Contreras Silva")
         pulsar("Guardar visita offline"); esperar("Iniciar protocolo del equipo")
+        compose.onNodeWithText("Consultar clima de Puente Alto").assertExists()
         seleccionar("Equipo:", "REL-50/51-A")
         pulsar("Iniciar protocolo del equipo"); esperar("Guardar datos del protocolo")
         escribir("Temperatura ambiente (°C) *", "20")
         escribir("Humedad relativa (%) *", "50")
         pulsar("Guardar datos del protocolo"); esperar("Datos guardados")
-        pulsar("Registrar o corregir pruebas")
-        seleccionar("Instrumento *:", "Inyección secundaria")
-        escribir("Corriente de ajuste (A) *", "5")
-        escribir("Corriente de operación (A) *", "5,1")
-        escribir("Tiempo esperado (ms) *", "100")
-        escribir("Tiempo medido (ms) *", "104")
-        compose.onNodeWithText("Resultado calculado · vista previa").performScrollTo().assertIsDisplayed()
-        pulsar("Guardar prueba offline"); esperar("Prueba y resultado guardados")
+        fun registrarPrueba() {
+            pulsar("Registrar o corregir pruebas")
+            seleccionar("Instrumento *:", "Inyección secundaria")
+            escribir("Corriente de ajuste (A) *", "5")
+            escribir("Corriente de operación (A) *", "5,1")
+            escribir("Tiempo esperado (ms) *", "100")
+            escribir("Tiempo medido (ms) *", "104")
+            compose.onNodeWithText("Resultado calculado · vista previa").performScrollTo().assertIsDisplayed()
+            pulsar("Guardar prueba offline"); esperar("Prueba y resultado guardados")
+        }
+        registrarPrueba()
+        pulsar("Editar prueba")
+        escribir("Tiempo medido (ms) *", "102")
+        pulsar("Guardar prueba offline")
+        esperar("tiempo: 102.0 ms")
+        pulsar("Eliminar prueba")
+        compose.onNodeWithText("Cancelar").performClick()
+        compose.onNode(hasText("tiempo: 102.0 ms", substring = true) and
+            hasText("Instrumento: Inyección secundaria", substring = true)).assertExists()
+        pulsar("Eliminar prueba")
+        compose.onNodeWithText("Eliminar").performClick()
+        esperar("Prueba eliminada")
+        compose.onNodeWithText("tiempo: 102.0 ms", substring = true).assertDoesNotExist()
+        registrarPrueba()
         pulsar("Pasar a Registrado en terreno"); esperar("Registrado en terreno; pendiente de formalización")
         Espresso.closeSoftKeyboard()
         compose.onNodeWithText("Volver a la pantalla anterior").performClick()

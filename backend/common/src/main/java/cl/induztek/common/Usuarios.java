@@ -6,7 +6,10 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 public final class Usuarios {
-    public record Usuario(String id, String nombre, String correo, String rol, String clienteId) {
+    public record Usuario(String id, String nombre, String correo, String rol, String clienteId, String rut, boolean activo) {
+        public Usuario(String id, String nombre, String correo, String rol, String clienteId) {
+            this(id, nombre, correo, rol, clienteId, "", true);
+        }
         public boolean interno() { return !rol.equals("CLIENTE"); }
         public boolean revisor() { return rol.equals("INGENIERO") || rol.equals("JEFE_TECNICO"); }
     }
@@ -23,6 +26,7 @@ public final class Usuarios {
         new Usuario("cliente3", "Patricio Navarro Soto", "pnavarro@cerroalto.ejemplo", "CLIENTE", "cliente-minera")
     );
     public static Usuario actual(Authentication auth) {
+        if (auth.getPrincipal() instanceof Usuario usuario) return usuario;
         return TODOS.stream().filter(u -> u.correo().equalsIgnoreCase(auth.getName())).findFirst()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
     }

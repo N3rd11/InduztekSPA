@@ -13,7 +13,9 @@ import org.springframework.beans.factory.annotation.Value;
 import static org.junit.jupiter.api.Assertions.*;
 import static cl.induztek.common.Json.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "spring.datasource.url=jdbc:h2:mem:catalog-test;DB_CLOSE_DELAY=-1")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+    "spring.datasource.url=jdbc:h2:mem:catalog-test;DB_CLOSE_DELAY=-1", "induztek.access-url=", "induztek.demo=true"
+})
 class CatalogServiceTest {
     @Autowired CatalogService servicio;
     @Value("${local.server.port}") int puerto;
@@ -33,6 +35,25 @@ class CatalogServiceTest {
         assertEquals(2,datos.getAsJsonArray("equipos").size());
         var e = dato("id",UUID.randomUUID().toString(),"usuarioId",cliente.id(),"tipo","CLIENTE","payload",dato("id","nuevo","nombre","Empresa","rut","76.482.915-8").toString());
         assertEquals(403,assertThrows(ResponseStatusException.class,() -> servicio.aplicar(cliente,e)).getStatusCode().value());
+    }
+    @Test void validaContactoAntesDeGuardarElEvento() {
+        var tecnico = Usuarios.TODOS.get(0);
+        String id = UUID.randomUUID().toString();
+        var datos = dato("id", id, "nombre", "Cliente de prueba", "rut", "12.345.678-5",
+            "correo", "contacto@", "telefono", "abcdefg");
+        var evento = dato("id", UUID.randomUUID().toString(), "usuarioId", tecnico.id(), "tipo", "CLIENTE");
+        evento.addProperty("payload", datos.toString());
+        assertEquals(422, assertThrows(ResponseStatusException.class, () -> servicio.aplicar(tecnico, evento)).getStatusCode().value());
+        datos.addProperty("correo", " contacto@empresa.cl ");
+        evento.addProperty("payload", datos.toString());
+        assertEquals(422, assertThrows(ResponseStatusException.class, () -> servicio.aplicar(tecnico, evento)).getStatusCode().value());
+        datos.addProperty("telefono", " +56 9 0000 0101 ");
+        evento.addProperty("payload", datos.toString());
+        servicio.aplicar(tecnico, evento);
+        var guardado = servicio.snapshot(tecnico).getAsJsonArray("clientes").asList().stream()
+            .map(e -> e.getAsJsonObject()).filter(e -> s(e, "id").equals(id)).findFirst().orElseThrow();
+        assertEquals("contacto@empresa.cl", s(guardado, "correo"));
+        assertEquals("+56 9 0000 0101", s(guardado, "telefono"));
     }
     @Test void instrumentoSoloJefeYEventoIdempotente() {
         var tecnico = Usuarios.TODOS.get(0); var jefe = Usuarios.TODOS.stream().filter(u -> u.id().equals("jefe1")).findFirst().orElseThrow();

@@ -18,6 +18,8 @@ data class UsuarioDemo(
     val activo: Boolean = true
 )
 
+data class Persona(val id: String, val nombre: String, val rol: Rol, val activo: Boolean)
+
 object UsuariosDemo {
 
     val todos = listOf(
@@ -54,18 +56,4 @@ object UsuariosDemo {
         UsuarioDemo("cliente3", "Patricio Navarro Soto", "pnavarro@cerroalto.ejemplo", Rol.CLIENTE, "12.645.308-6", "cliente-minera")
     )
 
-    fun validar(
-        correo: String,
-        clave: String
-    ): UsuarioDemo? {
-
-        if (clave != "1234") return null
-
-        return todos.find {
-            it.activo && it.correo.equals(
-                correo.trim(),
-                ignoreCase = true
-            )
-        }
-    }
 }

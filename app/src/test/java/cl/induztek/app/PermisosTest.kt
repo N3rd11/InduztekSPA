@@ -16,9 +16,4 @@ class PermisosTest {
             assertEquals(rol != Rol.CLIENTE, Permisos.empresa(usuario, "b"))
         }
     }
-    @Test fun accesoDemoNormalizaCorreoPeroNoAceptaClaveIncorrecta() {
-        assertNotNull(UsuariosDemo.validar(" MGODOY@induztek.ejemplo ", "1234"))
-        assertNull(UsuariosDemo.validar("mgodoy@induztek.ejemplo", "incorrecta"))
-        assertEquals(10, UsuariosDemo.todos.size)
-    }
 }
